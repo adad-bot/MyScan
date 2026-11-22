@@ -1,33 +1,39 @@
-package ir.scanfa.app.ui
+﻿package ir.scanfa.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,9 +41,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.data.ScannerDoc
 import ir.scanfa.app.util.DateFa
@@ -45,11 +57,12 @@ import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val docs by vm.docs.collectAsState()
     val scope = rememberCoroutineScope()
+    val scheme = MaterialTheme.colorScheme
+    val dark = scheme.background.luminance() < 0.5f
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -80,124 +93,328 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            ScreenBar("اسکنر سند", actions = {
-                IconButton(onClick = { nav.navigate("settings") }) {
-                    Icon(Icons.Filled.Settings, contentDescription = "تنظیمات")
-                }
-            })
+    fun startScan() {
+        val id = vm.createDocument("", null)
+        nav.navigate("camera/$id")
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(scheme.background).navigationBarsPadding(),
+        contentPadding = PaddingValues(bottom = 28.dp)
+    ) {
+        item {
+            HomeHeader(
+                dark = dark,
+                onSettings = { nav.navigate("settings") },
+                onScan = { startScan() }
+            )
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActionCard("اسکن", "دوربین", Icons.Filled.CameraAlt, Modifier.weight(1f)) {
-                        val id = vm.createDocument("", null)
-                        nav.navigate("camera/$id")
-                    }
-                    ActionCard("ورود عکس", "گالری", Icons.Filled.PhotoLibrary, Modifier.weight(1f)) {
-                        imagePicker.launch("image/*")
+        item {
+            QuickActions(
+                onGallery = { imagePicker.launch("image/*") },
+                onPdf = { pdfPicker.launch(arrayOf("application/pdf")) },
+                onTemplates = { nav.navigate("templates") }
+            )
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("سندهای اخیر", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(8.dp))
+                if (docs.isNotEmpty()) {
+                    Surface(
+                        color = scheme.primaryContainer,
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            DateFa.fa(docs.size),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
                     }
                 }
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActionCard("ورود PDF", "چند صفحه", Icons.Filled.Description, Modifier.weight(1f)) {
-                        pdfPicker.launch(arrayOf("application/pdf"))
-                    }
-                    ActionCard("الگوها", "مدارک", Icons.Filled.Add, Modifier.weight(1f)) {
-                        nav.navigate("templates")
-                    }
+                Spacer(Modifier.weight(1f))
+                if (docs.isNotEmpty()) {
+                    Text(
+                        "آخرین فعالیت",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant
+                    )
                 }
             }
-            item { SectionTitle("سندهای اخیر") }
-            if (docs.isEmpty()) {
-                item { EmptyHome() }
-            } else {
-                items(docs, key = { it.id }) { doc ->
-                    DocRow(doc) { nav.navigate("doc/${doc.id}") }
-                }
+        }
+        if (docs.isEmpty()) {
+            item { EmptyState(onScan = { startScan() }) }
+        } else {
+            items(docs, key = { it.id }) { doc ->
+                DocCard(doc) { nav.navigate("doc/${doc.id}") }
             }
-            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
 
 @Composable
-private fun ActionCard(
+private fun HomeHeader(dark: Boolean, onSettings: () -> Unit, onScan: () -> Unit) {
+    val start = if (dark) Color(0xFF10362F) else Color(0xFF0F766E)
+    val end = if (dark) Color(0xFF0A1D19) else Color(0xFF0B4B43)
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
+            .background(Brush.verticalGradient(listOf(start, end)))
+    ) {
+        Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.14f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Filled.DocumentScanner,
+                            contentDescription = null,
+                            tint = Color(0xFFEAFBF4),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "MyScan",
+                        color = Color(0xFFF3FFFA),
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "علی دادمان",
+                        color = Color(0xFFCDE9DE),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Filled.Settings, contentDescription = "تنظیمات", tint = Color(0xFFEAFBF4))
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "اسکن تمیز و سریع اسناد",
+                color = Color(0xFFEAFBF4),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color(0xFF9BE8C8),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "قاب سند خودکار تشخیص داده می‌شود",
+                    color = Color(0xFFB9E6D6),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+            val cardColor = if (dark) MaterialTheme.colorScheme.surface else Color.White
+            val titleColor = if (dark) MaterialTheme.colorScheme.onSurface else Color(0xFF0B3B34)
+            val subColor = if (dark) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF4B6A62)
+            val iconBg = if (dark) MaterialTheme.colorScheme.primaryContainer else Color(0xFF0F766E)
+            val iconTint = if (dark) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
+            val chevronColor = if (dark) MaterialTheme.colorScheme.primary else Color(0xFF0F766E)
+            Surface(
+                color = cardColor,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().pressClick { onScan() }
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = iconTint)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "اسکن سند جدید",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = titleColor
+                        )
+                        Text(
+                            "دوربین را باز کن، بقیه‌اش با MyScan",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subColor
+                        )
+                    }
+                    Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = chevronColor)
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun QuickActions(onGallery: () -> Unit, onPdf: () -> Unit, onTemplates: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QuickAction("گالری", "از عکس", Icons.Filled.PhotoLibrary, Modifier.weight(1f), onGallery)
+        QuickAction("PDF", "چند صفحه", Icons.Filled.Description, Modifier.weight(1f), onPdf)
+        QuickAction("الگوها", "مدارک", Icons.Filled.Widgets, Modifier.weight(1f), onTemplates)
+    }
+}
+
+@Composable
+private fun QuickAction(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier.pressClick { onClick() },
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        color = scheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            Spacer(Modifier.height(10.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Column(Modifier.padding(vertical = 14.dp, horizontal = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier.size(38.dp).clip(CircleShape).background(scheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(title, style = MaterialTheme.typography.labelLarge)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun DocRow(doc: ScannerDoc, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+private fun DocCard(doc: ScannerDoc, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).pressClick { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
+    ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            val thumbFile = doc.pages.firstOrNull()?.filePath()?.let { File(it) }
+            val thumb = doc.pages.firstOrNull()?.filePath()?.let { File(it) }
             FileImage(
-                file = thumbFile,
-                modifier = Modifier
-                    .size(64.dp)
-                    .then(Modifier),
-                size = 200
+                file = thumb,
+                modifier = Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)),
+                size = 220,
+                contentDescription = doc.title
             )
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     doc.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    "${DateFa.fa(doc.pages.size)} صفحه • ${DateFa.short(doc.updatedAt)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = scheme.primaryContainer, shape = CircleShape) {
+                        Text(
+                            "${DateFa.fa(doc.pages.size)} صفحه",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        DateFa.short(doc.updatedAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant
+                    )
+                }
                 val template = doc.template()
                 if (template != null) {
-                    Text(template.title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        template.title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.primary
+                    )
                 }
             }
+            Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = scheme.outline)
         }
     }
 }
 
 @Composable
-private fun EmptyHome() {
-    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun EmptyState(onScan: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = scheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = 34.dp, horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                Modifier.size(64.dp).clip(CircleShape).background(scheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.DocumentScanner,
+                    contentDescription = null,
+                    tint = scheme.onPrimaryContainer,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+            Spacer(Modifier.height(14.dp))
             Text("هنوز سندی نساخته‌اید", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
             Text(
-                "با دکمهٔ اسکن شروع کنید یا عکس و PDF وارد کنید.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                "با «اسکن سند جدید» شروع کنید یا عکس و PDF وارد کنید.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                color = scheme.primary,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.pressClick { onScan() }
+            ) {
+                Text(
+                    "شروع اسکن",
+                    color = scheme.onPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp)
+                )
+            }
         }
     }
 }

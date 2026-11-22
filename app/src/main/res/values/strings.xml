@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">اسکنر سند</string>
+    <string name="app_name">MyScan</string>
+    <string name="app_subtitle">علی دادمان</string>
 </resources>

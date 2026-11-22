@@ -1,4 +1,4 @@
-package ir.scanfa.app.ui
+﻿package ir.scanfa.app.ui
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -20,9 +21,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -79,17 +82,25 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
         val src = withContext(Dispatchers.IO) { Img.decode(File(loaded.originalPath), 1400) }
         original = src
         val existing = loaded.crop
-        corners = if (existing != null && existing.size == 8) {
-            existing.chunked(2).map { Offset(it[0], it[1]) }
-        } else if (src != null) {
-            DocDetector.detect(src).toNormalized(src.width, src.height)
+        val initialCorners = when {
+            existing != null && existing.size == 8 -> existing.chunked(2).map { Offset(it[0], it[1]) }
+            src != null -> DocDetector.detect(src).toNormalized(src.width, src.height)
                 .chunked(2)
                 .map { Offset(it[0], it[1]) }
-        } else {
-            emptyList()
+            else -> emptyList()
         }
+        corners = initialCorners
         preview = withContext(Dispatchers.IO) { Img.decode(File(loaded.filePath()), 1400) }
         frameMode = existing == null
+        if (loaded.processedPath == null && initialCorners.size == 4) {
+            val cropped = vm.previewPage(
+                loaded,
+                initialCorners.flatMap { listOf(it.x, it.y) },
+                filter,
+                1100
+            )
+            if (cropped != null) preview = cropped
+        }
     }
 
     fun cropList(): List<Float> = corners.flatMap { listOf(it.x, it.y) }
@@ -132,7 +143,7 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
             )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        Column(Modifier.padding(padding).fillMaxSize().navigationBarsPadding()) {
             val shown = if (frameMode) original else (preview ?: original)
             Box(Modifier.fillMaxWidth().weight(1f).padding(8.dp)) {
                 if (shown != null) {
@@ -167,6 +178,10 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
                                 filter = kind
                                 regenerate()
                             },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
                             label = { Text(kind.label) }
                         )
                     }

@@ -46,9 +46,18 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _themeMode = MutableStateFlow("system")
+    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
     init {
         DocStore.init(app)
+        _themeMode.value = prefs.themeMode
         refresh()
+    }
+
+    fun setThemeMode(mode: String) {
+        prefs.themeMode = mode
+        _themeMode.value = mode
     }
 
     fun refresh() {

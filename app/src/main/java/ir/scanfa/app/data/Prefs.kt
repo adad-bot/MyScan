@@ -2,9 +2,14 @@ package ir.scanfa.app.data
 
 import android.content.Context
 
-/** تنظیمات کاربر: کیفیت پیش‌فرض، زبان OCR و سقف حجم. */
+/** تنظیمات کاربر: تم، کیفیت، زبان OCR و سقف حجم. */
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("scanner_prefs", Context.MODE_PRIVATE)
+
+    /** system | light | dark */
+    var themeMode: String
+        get() = sp.getString("theme_mode", "system") ?: "system"
+        set(value) = sp.edit().putString("theme_mode", value).apply()
 
     var ocrLanguage: String
         get() = sp.getString("ocr_lang", "fas") ?: "fas"
@@ -33,4 +38,9 @@ class Prefs(context: Context) {
     var autoDetect: Boolean
         get() = sp.getBoolean("auto_detect", true)
         set(value) = sp.edit().putBoolean("auto_detect", value).apply()
+
+    /** ثبت خودکار وقتی قاب سند پایدار تشخیص داده شد. */
+    var autoCapture: Boolean
+        get() = sp.getBoolean("auto_capture", true)
+        set(value) = sp.edit().putBoolean("auto_capture", value).apply()
 }
