@@ -1,5 +1,11 @@
 # اسکنر سند — Android Document Scanner
 
+[![Build APK](https://github.com/adad-bot/MyScan/actions/workflows/build.yml/badge.svg)](https://github.com/adad-bot/MyScan/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/adad-bot/MyScan)](https://github.com/adad-bot/MyScan/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+**[دانلود APK نسخهٔ ۱.۰](https://github.com/adad-bot/MyScan/releases/download/v1.0.0/app-debug.apk)** — ۴۵ مگابایت
+
 اپلیکیشن اسکن اسناد برای اندروید با پردازش کاملاً محلی: ثبت با دوربین یا ورود از گالری و PDF،
 تشخیص خودکار قاب و اصلاح پرسپکتیو، فیلتر تصویر، مدیریت چندصفحه‌ای، متن‌خوانی فارسی روی دستگاه
 و خروجی PDF (تصویری و قابل جست‌وجو)، Word، JPG و TXT با کنترل سقف حجم.
