@@ -26,6 +26,18 @@
 - **خروجی**: PDF تصویری با سقف حجم، PDF قابل جست‌وجو، DOCX راست‌به‌چپ، JPG و TXT؛ ارسال با منوی
   اندروید و ذخیره با انتخاب‌گر فایل.
 
+## تصاویر
+
+این تصاویر از اجرای واقعی اپ روی شبیه‌ساز Pixel با API 34 گرفته شده‌اند.
+
+| خانه | ویرایش صفحه | خروجی |
+|---|---|---|
+| ![](docs/screenshots/01-home.png) | ![](docs/screenshots/02-editor.png) | ![](docs/screenshots/03-export.png) |
+
+| بازبینی متن | PDF ساخته‌شده در اپ |
+|---|---|
+| ![](docs/screenshots/04-ocr.png) | ![](docs/screenshots/05-pdf-output.png) |
+
 ## گزارش محصول
 
 - [گزارش کامل (DOCX)](docs/Android-Scanner-Report.docx)
