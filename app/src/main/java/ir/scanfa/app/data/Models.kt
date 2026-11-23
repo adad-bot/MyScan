@@ -1,4 +1,4 @@
-package ir.scanfa.app.data
+﻿package ir.scanfa.app.data
 
 /** یک خانه از الگوی مدرک؛ مثلاً «روی مدرک هویتی». */
 data class Slot(val id: String, val title: String)
@@ -25,6 +25,7 @@ data class Page(
     val rotation: Int = 0,
     val crop: List<Float>? = null,
     val erase: List<Float> = emptyList(),
+    val note: String? = null,
     val ocrText: String? = null,
     val ocrEdited: String? = null,
     val slotId: String? = null,

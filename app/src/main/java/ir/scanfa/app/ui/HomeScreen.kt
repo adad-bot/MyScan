@@ -1,4 +1,4 @@
-﻿package ir.scanfa.app.ui
+package ir.scanfa.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Description
@@ -40,6 +41,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -52,9 +55,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.data.ScannerDoc
+import ir.scanfa.app.util.Calendars
 import ir.scanfa.app.util.DateFa
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.launch
@@ -101,7 +106,8 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         nav.navigate("camera/$id")
     }
 
-    var showRose by remember { mutableStateOf(false) }
+    var petalTrigger by remember { mutableIntStateOf(0) }
+    var lastLogoTap by remember { mutableLongStateOf(0L) }
 
     Box(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -112,10 +118,21 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
             HomeHeader(
                 dark = dark,
                 onSettings = { nav.navigate("settings") },
-                onLogoClick = { showRose = true },
-                onScan = { startScan() }
+                onLogoClick = {
+                    val now = System.currentTimeMillis()
+                    if (now - lastLogoTap < 400L) {
+                        nav.navigate("about")
+                    } else {
+                        petalTrigger += 1
+                    }
+                    lastLogoTap = now
+                },
+                onScan = { startScan() },
+                petalTrigger = petalTrigger,
+                onPetalDone = { petalTrigger = 0 }
             )
         }
+        item { DateBar(onClick = { nav.navigate("calendar") }) }
         item {
             QuickActions(
                 onGallery = { imagePicker.launch("image/*") },
@@ -162,8 +179,12 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         }
     }
 
-        if (showRose) {
-            RoseOverlay(onDone = { showRose = false })
+        if (petalTrigger > 0) {
+            PetalRain(
+                trigger = petalTrigger,
+                modifier = Modifier.fillMaxSize().zIndex(2f),
+                onDone = { petalTrigger = 0 }
+            )
         }
     }
 }
@@ -173,7 +194,9 @@ private fun HomeHeader(
     dark: Boolean,
     onSettings: () -> Unit,
     onLogoClick: () -> Unit,
-    onScan: () -> Unit
+    onScan: () -> Unit,
+    petalTrigger: Int,
+    onPetalDone: () -> Unit
 ) {
     val start = if (dark) Color(0xFF10362F) else Color(0xFF0F766E)
     val end = if (dark) Color(0xFF0A1D19) else Color(0xFF0B4B43)
@@ -272,6 +295,7 @@ private fun HomeHeader(
             }
             Spacer(Modifier.height(18.dp))
         }
+
     }
 }
 
@@ -420,6 +444,45 @@ private fun EmptyState(onScan: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DateBar(onClick: () -> Unit) {
+    val today = remember { Calendars.todayJdn() }
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .pressClick { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        color = scheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.CalendarMonth,
+                contentDescription = "تقویم",
+                tint = scheme.primary
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "${Calendars.weekdayName(today)} ${Calendars.jalaliText(today)}",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    "میلادی: ${Calendars.gregorianText(today)}  •  قمری: ${Calendars.hijriText(today)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant
+                )
+            }
+            Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = scheme.outline)
         }
     }
 }

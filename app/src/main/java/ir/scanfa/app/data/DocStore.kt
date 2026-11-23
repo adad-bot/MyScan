@@ -1,4 +1,4 @@
-package ir.scanfa.app.data
+﻿package ir.scanfa.app.data
 
 import android.content.Context
 import org.json.JSONArray
@@ -92,6 +92,7 @@ object DocStore {
         put("filter", p.filter)
         put("rotation", p.rotation)
         put("ocrDone", p.ocrDone)
+        if (!p.note.isNullOrBlank()) put("note", p.note)
         if (!p.ocrText.isNullOrEmpty()) put("ocrText", p.ocrText)
         if (!p.ocrEdited.isNullOrEmpty()) put("ocrEdited", p.ocrEdited)
         if (!p.slotId.isNullOrBlank()) put("slot", p.slotId)
@@ -146,6 +147,7 @@ object DocStore {
             rotation = p.optInt("rotation", 0),
             crop = crop,
             erase = erase,
+            note = p.stringOrNull("note"),
             ocrText = p.stringOrNull("ocrText"),
             ocrEdited = p.stringOrNull("ocrEdited"),
             slotId = p.stringOrNull("slot"),

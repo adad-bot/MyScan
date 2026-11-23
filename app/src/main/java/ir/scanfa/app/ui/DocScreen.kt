@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -75,6 +76,8 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     var showRename by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
+    var showNote by remember { mutableStateOf(false) }
+    var noteText by remember { mutableStateOf("") }
     var slotDialog by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
@@ -165,6 +168,7 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 ) {
                     BarAction(Icons.Filled.Add, "افزودن") { showAdd = true }
                     BarAction(Icons.Filled.RotateRight, "چرخش") { rotate() }
+                    BarAction(Icons.Filled.EditNote, "یادداشت") { showNote = true }
                     BarAction(Icons.Filled.FilterAlt, "فیلتر") { showFilter = true }
                     BarAction(Icons.Filled.TextFields, "متن") { runOcr() }
                     BarAction(Icons.Filled.PictureAsPdf, "خروجی") { nav.navigate("export/$docId") }
@@ -358,6 +362,43 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
             }
         )
     }
+
+
+    if (showNote) {
+        AlertDialog(
+            onDismissRequest = { showNote = false },
+            title = { Text("یادداشت صفحه") },
+            text = {
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                    minLines = 5,
+                    label = { Text("متن یادداشت") }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val text = noteText
+                    showNote = false
+                    noteText = ""
+                    scope.launch {
+                        val page = vm.addNotePage(docId, text)
+                        reload()
+                        if (page != null) {
+                            vm.postMessage("صفحهٔ یادداشت اضافه شد.")
+                            nav.navigate("editor/$docId/${page.id}")
+                        } else {
+                            vm.postMessage("متن یادداشت خالی بود.")
+                        }
+                    }
+                }) { Text("افزودن") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNote = false }) { Text("انصراف") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -410,4 +451,5 @@ private fun PageRow(
             }
         }
     }
+
 }

@@ -41,10 +41,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import ir.scanfa.app.export.ShareUtil
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.launch
 
@@ -69,6 +71,21 @@ fun ToolsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 val id = vm.createDocument("", null)
                 vm.importPdf(id, uri)
                 nav.navigate("doc/$id")
+            }
+        }
+    }
+
+    val context = LocalContext.current
+    val wordPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val result = vm.pdfToWord(uri)
+                if (result != null && result.files.isNotEmpty()) {
+                    vm.postMessage(result.message)
+                    ShareUtil.shareMany(context, result.files, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                } else {
+                    vm.postMessage("تبدیل PDF به Word ناموفق بود.")
+                }
             }
         }
     }
@@ -149,8 +166,8 @@ fun ToolsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 ToolCard("خروجی Word", Icons.Filled.Description, Modifier.weight(1f), enabled = true) {
                     vm.postMessage("در صفحهٔ سند، «خروجی» را بزن و قالب Word را انتخاب کن.")
                 }
-                ToolCard("PDF جست‌وجوپذیر", Icons.Filled.PictureAsPdf, Modifier.weight(1f), enabled = true) {
-                    vm.postMessage("در صفحهٔ خروجی، «PDF قابل جست‌وجو» را انتخاب کن.")
+                ToolCard("PDF به Word", Icons.Filled.PictureAsPdf, Modifier.weight(1f), enabled = true) {
+                    wordPicker.launch(arrayOf("application/pdf"))
                 }
             }
             Spacer(Modifier.height(28.dp))

@@ -1,6 +1,7 @@
 package ir.scanfa.app.ui
 
 import android.media.MediaPlayer
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -171,14 +172,19 @@ fun MyScanLogo(
 
 /** جشن کوچک: گل رز سه ثانیه‌ای با یک ملودی کوتاه. */
 @Composable
-fun RoseOverlay(onDone: () -> Unit) {
+fun PetalRain(
+    trigger: Int,
+    modifier: Modifier = Modifier,
+    onDone: () -> Unit = {}
+) {
+    if (trigger == 0) return
     val context = LocalContext.current
-    var player by remember { mutableStateOf<MediaPlayer?>(null) }
+    val progress = remember(trigger) { Animatable(0f) }
 
-    DisposableEffect(Unit) {
-        player = try {
+    DisposableEffect(trigger) {
+        val player = try {
             MediaPlayer.create(context, R.raw.rose)?.apply {
-                setVolume(0.9f, 0.9f)
+                setVolume(0.7f, 0.7f)
                 start()
             }
         } catch (t: Throwable) {
@@ -191,58 +197,36 @@ fun RoseOverlay(onDone: () -> Unit) {
             } catch (t: Throwable) {
                 // نادیده‌گرفتنی
             }
-            player = null
         }
     }
 
-    LaunchedEffect(Unit) {
-        delay(3000)
+    LaunchedEffect(trigger) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(2000, easing = LinearEasing))
         onDone()
     }
 
-    val transition = rememberInfiniteTransition(label = "rose")
-    val turn by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(6000, easing = LinearEasing)),
-        label = "turn"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
-            .pressClick { onDone() },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Canvas(Modifier.size(230.dp)) {
-                val c = center
-                val r = size.minDimension / 2f
-                rotate(turn) {
-                    for (i in 0 until 8) {
-                        rotate(i * 45f, pivot = c) {
-                            drawOval(
-                                brush = Brush.radialGradient(
-                                    listOf(Color(0xFFFF6B9A), Color(0xFFC2185B)),
-                                    center = Offset(c.x, c.y - r * 0.42f),
-                                    radius = r * 0.8f
-                                ),
-                                topLeft = Offset(c.x - r * 0.30f, c.y - r * 0.92f),
-                                size = Size(r * 0.60f, r * 0.92f)
-                            )
-                        }
-                    }
-                    drawCircle(Color(0xFFFFD1E0), radius = r * 0.20f, center = c)
-                    drawCircle(Color(0xFFE91E63).copy(alpha = 0.5f), radius = r * 0.10f, center = c)
-                }
+    Canvas(modifier) {
+        val t = progress.value
+        repeat(16) { i ->
+            val seed = ((i * 53) % 97) / 97f
+            val baseX = size.width * (0.72f + seed * 0.22f)
+            val drift = (seed - 0.5f) * size.width * 0.38f
+            val x = baseX + drift * t
+            val y = -26.dp.toPx() + (size.height + 70.dp.toPx()) * ((t * 1.2f + seed * 0.55f) % 1f)
+            val angle = t * 540f * (0.4f + seed)
+            rotate(angle, pivot = Offset(x, y)) {
+                drawOval(
+                    color = Color(0xFFFF5C8A).copy(alpha = 0.92f),
+                    topLeft = Offset(x, y),
+                    size = Size(9.dp.toPx(), 13.dp.toPx())
+                )
+                drawOval(
+                    color = Color(0xFFFFC2D6).copy(alpha = 0.85f),
+                    topLeft = Offset(x + 2.dp.toPx(), y + 2.dp.toPx()),
+                    size = Size(5.dp.toPx(), 7.dp.toPx())
+                )
             }
-            Spacer(Modifier.height(18.dp))
-            Text(
-                "گل رز برای علی دادمان",
-                color = Color(0xFFFFE4EE),
-                style = MaterialTheme.typography.titleMedium
-            )
         }
     }
 }

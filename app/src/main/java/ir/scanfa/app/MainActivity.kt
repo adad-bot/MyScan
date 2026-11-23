@@ -9,8 +9,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,6 +29,8 @@ class MainActivity : ComponentActivity() {
             val vm: ScannerViewModel = viewModel()
             val themeMode by vm.themeMode.collectAsState()
             val haptics by vm.haptics.collectAsState()
+            val skin by vm.skin.collectAsState()
+            val uiScale by vm.uiScale.collectAsState()
             val dark = when (themeMode) {
                 "dark" -> true
                 "light" -> false
@@ -42,11 +46,14 @@ class MainActivity : ComponentActivity() {
                     isAppearanceLightNavigationBars = !dark
                 }
             }
+            val base = LocalDensity.current
+            val scoped = Density(base.density * uiScale, base.fontScale * uiScale)
             CompositionLocalProvider(
                 LocalLayoutDirection provides LayoutDirection.Rtl,
-                LocalHapticsEnabled provides haptics
+                LocalHapticsEnabled provides haptics,
+                LocalDensity provides scoped
             ) {
-                ScannerTheme(mode = themeMode) {
+                ScannerTheme(mode = themeMode, skinId = skin) {
                     AppNav(vm)
                 }
             }

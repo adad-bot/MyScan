@@ -61,6 +61,8 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var autoDetect by remember { mutableStateOf(vm.prefs.autoDetect) }
     var haptics by remember { mutableStateOf(vm.prefs.hapticsEnabled) }
     var theme by remember { mutableStateOf(vm.prefs.themeMode) }
+    var skin by remember { mutableStateOf(vm.prefs.skin) }
+    var uiScale by remember { mutableStateOf(vm.prefs.uiScale) }
 
     Scaffold(topBar = { ScreenBar("تنظیمات", onBack = { nav.popBackStack() }) }) { padding ->
         Column(
@@ -103,6 +105,49 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 }
                 Spacer(Modifier.height(6.dp))
                 HintText("فایل زبان داخل اپ است و پردازش روی دستگاه انجام می‌شود.")
+            }
+
+
+            SettingCard("پوستهٔ برنامه") {
+                Text(
+                    "پنج طرح هماهنگ؛ رنگ منوها و ساختار یکدست می‌ماند.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Skins.forEach { item ->
+                        SkinSwatch(
+                            name = item.name,
+                            color = androidx.compose.ui.graphics.Color(item.primary),
+                            selected = skin == item.id,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            skin = item.id
+                            vm.setSkin(item.id)
+                        }
+                    }
+                }
+            }
+
+            SettingCard("اندازهٔ متن و آیکن‌ها") {
+                Text(
+                    "بزرگ‌نمایی: ${DateFa.fa((uiScale * 100).toInt())}٪",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = uiScale,
+                    onValueChange = {
+                        uiScale = it
+                        vm.setUiScale(it)
+                    },
+                    valueRange = 0.9f..1.3f
+                )
+                Text(
+                    "با تغییر این مقدار، متن‌ها و آیکن‌های کل برنامه بزرگ یا کوچک می‌شوند.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             SettingCard("بازخورد لمسی") {
@@ -308,5 +353,35 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
             )
         }
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun SkinSwatch(
+    name: String,
+    color: androidx.compose.ui.graphics.Color,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.pressClick { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .background(color, CircleShape)
+                .then(
+                    if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    else Modifier
+                )
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            name,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

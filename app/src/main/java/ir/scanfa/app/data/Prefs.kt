@@ -1,4 +1,4 @@
-package ir.scanfa.app.data
+﻿package ir.scanfa.app.data
 
 import android.content.Context
 
@@ -48,4 +48,14 @@ class Prefs(context: Context) {
     var hapticsEnabled: Boolean
         get() = sp.getBoolean("haptics_enabled", true)
         set(value) = sp.edit().putBoolean("haptics_enabled", value).apply()
+
+    /** پوستهٔ انتخاب‌شده: emerald | ocean | amber | violet | graphite */
+    var skin: String
+        get() = sp.getString("skin", "emerald") ?: "emerald"
+        set(value) = sp.edit().putString("skin", value).apply()
+
+    /** بزرگ‌نمایی متن و آیکن‌ها (۱٫۰ تا ۱٫۳) */
+    var uiScale: Float
+        get() = sp.getFloat("ui_scale", 1f)
+        set(value) = sp.edit().putFloat("ui_scale", value.coerceIn(0.9f, 1.3f)).apply()
 }

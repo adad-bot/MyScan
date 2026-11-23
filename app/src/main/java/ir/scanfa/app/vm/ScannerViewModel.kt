@@ -11,12 +11,14 @@ import ir.scanfa.app.data.Page
 import ir.scanfa.app.data.PaperSize
 import ir.scanfa.app.data.Prefs
 import ir.scanfa.app.data.ScannerDoc
+import ir.scanfa.app.export.DocxBuilder
 import ir.scanfa.app.export.ExportPaths
 import ir.scanfa.app.export.Exporters
 import ir.scanfa.app.image.DocDetector
 import ir.scanfa.app.image.Erase
 import ir.scanfa.app.image.Filters
 import ir.scanfa.app.image.Img
+import ir.scanfa.app.image.NoteRenderer
 import ir.scanfa.app.image.PdfImport
 import ir.scanfa.app.image.Quad
 import ir.scanfa.app.image.Warp
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import java.io.FileOutputStream
 import java.io.File
 import java.util.UUID
 
@@ -54,10 +57,18 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _skin = MutableStateFlow("emerald")
+    val skin: StateFlow<String> = _skin.asStateFlow()
+
+    private val _uiScale = MutableStateFlow(1f)
+    val uiScale: StateFlow<Float> = _uiScale.asStateFlow()
+
     init {
         DocStore.init(app)
         _themeMode.value = prefs.themeMode
         _haptics.value = prefs.hapticsEnabled
+        _skin.value = prefs.skin
+        _uiScale.value = prefs.uiScale
         refresh()
     }
 
@@ -69,6 +80,16 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     fun setHaptics(enabled: Boolean) {
         prefs.hapticsEnabled = enabled
         _haptics.value = enabled
+    }
+
+    fun setSkin(id: String) {
+        prefs.skin = id
+        _skin.value = id
+    }
+
+    fun setUiScale(value: Float) {
+        prefs.uiScale = value
+        _uiScale.value = value.coerceIn(0.9f, 1.3f)
     }
 
     fun refresh() {
@@ -313,6 +334,64 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             refresh()
             done
         }
+
+    /** صفحهٔ یادداشت را می‌سازد و به سند اضافه می‌کند. */
+    suspend fun addNotePage(docId: String, text: String): Page? = withContext(Dispatchers.IO) {
+        if (text.isBlank()) return@withContext null
+        val doc = DocStore.load(docId) ?: return@withContext null
+        val file = DocStore.newImageFile(docId, "note")
+        val bmp = NoteRenderer.render(text)
+        val ok = Img.saveJpeg(bmp, file, 88)
+        bmp.recycle()
+        if (!ok) return@withContext null
+        val page = Page(
+            id = UUID.randomUUID().toString().take(10),
+            originalPath = file.absolutePath,
+            crop = listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f),
+            note = text,
+            ocrText = text,
+            ocrDone = true
+        )
+        doc.pages.add(page)
+        DocStore.save(doc)
+        refresh()
+        page
+    }
+
+    /** تبدیل PDF به Word: هر صفحه تصویر و متن OCR می‌شود. */
+    suspend fun pdfToWord(uri: Uri): Exporters.Result? = withContext(Dispatchers.Default) {
+        _busy.value = "تبدیل PDF به Word"
+        val bitmaps = PdfImport.renderPages(getApplication(), uri, 1600)
+        if (bitmaps.isEmpty()) {
+            _busy.value = null
+            return@withContext null
+        }
+        val builder = DocxBuilder()
+        builder.heading("تبدیل PDF به Word", 1)
+        bitmaps.forEachIndexed { index, bmp ->
+            _progress.value = (index + 1) to bitmaps.size
+            builder.heading("صفحهٔ ${DateFa.fa(index + 1)}", 2)
+            builder.image(Img.encodeJpeg(bmp, 80), bmp.width, bmp.height)
+            val text = OcrEngine.recognize(getApplication(), bmp, prefs.ocrLanguage)
+            if (!text.isNullOrBlank()) builder.paragraph(text, size = 24)
+            else builder.paragraph("متن این صفحه استخراج نشد.", size = 22)
+            bmp.recycle()
+        }
+        val out = File(exportDir(), Naming.subject() + "-pdf2word.docx")
+        val ok = try {
+            FileOutputStream(out).use { builder.build(it) }
+            true
+        } catch (t: Throwable) {
+            false
+        }
+        _busy.value = null
+        _progress.value = null
+        if (ok) {
+            Exporters.Result(listOf(out), out.length(), true, "Word ساخته شد: ${ExportPaths.humanSize(out.length())}")
+        } else {
+            null
+        }
+    }
 
     fun saveText(docId: String, pageId: String, text: String) {
         val doc = DocStore.load(docId) ?: return
