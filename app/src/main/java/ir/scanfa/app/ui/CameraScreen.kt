@@ -133,6 +133,7 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
 
     var flashOn by remember { mutableStateOf(false) }
     var autoCapture by remember { mutableStateOf(vm.prefs.autoCapture) }
+    var manualMode by remember { mutableStateOf(false) }
     var shots by remember { mutableIntStateOf(0) }
     var capturing by remember { mutableStateOf(false) }
     var liveQuad by remember { mutableStateOf<List<Float>?>(null) }
@@ -164,6 +165,11 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 }
             }
         }
+    }
+
+    LaunchedEffect(manualMode) {
+        analyzer.enabled = !manualMode
+        if (manualMode) liveQuad = null
     }
 
     val executor = remember { Executors.newSingleThreadExecutor() }
@@ -243,7 +249,7 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     }
 
     LaunchedEffect(hits, autoCapture, capturing) {
-        if (autoCapture && !capturing && hits >= 5) {
+        if (autoCapture && !manualMode && !capturing && hits >= 5) {
             hits = 0
             capture()
         }
@@ -326,6 +332,18 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                         )
                     )
                     Text("ثبت خودکار", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ModeChip("تشخیص خودکار", !manualMode) {
+                    manualMode = false
+                }
+                ModeChip("تنظیم دستی", manualMode) {
+                    manualMode = true
+                    autoCapture = false
+                    vm.prefs.autoCapture = false
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -471,4 +489,20 @@ private fun similar(a: List<Float>, b: List<Float>): Boolean {
         if (d > maxShift) maxShift = d
     }
     return maxShift < 0.05f
+}
+
+@Composable
+private fun ModeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        color = if (selected) Color(0xFF5EEAD4) else Color.Black.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.pressClick { onClick() }
+    ) {
+        Text(
+            label,
+            color = if (selected) Color(0xFF00322B) else Color.White,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+        )
+    }
 }

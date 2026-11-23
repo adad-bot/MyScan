@@ -83,5 +83,5 @@ class Prefs(context: Context) {
         set(value) = sp.edit().putInt("ui_level", value.coerceIn(1, 5)).apply()
 
     val uiScale: Float
-        get() = 0.88f + (uiLevel - 1) * 0.09f
+        get() = 0.85f + (uiLevel - 1) * 0.0825f
 }

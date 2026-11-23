@@ -10,6 +10,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +65,18 @@ fun MyScanLogo(
     size: Dp = 58.dp,
     onClick: () -> Unit = {}
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val pressScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy
+        ),
+        label = "logoPress"
+    )
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val hapticsEnabled = LocalHapticsEnabled.current
     val transition = rememberInfiniteTransition(label = "logo")
     val sweep by transition.animateFloat(
         initialValue = 0f,
@@ -86,11 +101,19 @@ fun MyScanLogo(
         modifier = Modifier
             .size(size)
             .graphicsLayer {
-                scaleX = pulse
-                scaleY = pulse
+                scaleX = pulse * pressScale
+                scaleY = pulse * pressScale
             }
             .clip(CircleShape)
-            .pressClick { onClick() },
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current
+            ) {
+                if (hapticsEnabled) {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                }
+                onClick()
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {

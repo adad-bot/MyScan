@@ -172,7 +172,7 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
             }
 
             SettingCard("اندازهٔ متن و آیکن‌ها") {
-                val level = ((uiScale - 0.88f) / 0.09f + 1f).roundToInt().coerceIn(1, 5)
+                val level = ((uiScale - 0.85f) / 0.0825f + 1f).roundToInt().coerceIn(1, 5)
                 Text(
                     "سطح ${DateFa.fa(level)} از ۵  (${DateFa.fa((uiScale * 100).toInt())}٪)",
                     style = MaterialTheme.typography.bodyMedium

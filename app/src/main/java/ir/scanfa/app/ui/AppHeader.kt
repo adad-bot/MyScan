@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -31,14 +33,22 @@ import androidx.compose.ui.unit.sp
 fun AppHeader(
     onLogoClick: () -> Unit,
     onSettings: () -> Unit,
-    onLock: () -> Unit
+    onLock: () -> Unit,
+    onLogoPositioned: ((Float, Float) -> Unit)? = null
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MyScanLogo(size = 54.dp, onClick = onLogoClick)
+        Box(
+            Modifier.onGloballyPositioned { coords ->
+                val rect = coords.boundsInRoot()
+                onLogoPositioned?.invoke(rect.center.x, rect.center.y)
+            }
+        ) {
+            MyScanLogo(size = 54.dp, onClick = onLogoClick)
+        }
         Spacer(Modifier.width(10.dp))
         Column {
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)

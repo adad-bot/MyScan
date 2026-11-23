@@ -12,7 +12,7 @@ import ir.scanfa.app.image.Img
  * به‌همراه مساحت نسبی و نسبت تصویر را برمی‌گرداند.
  */
 class DocumentAnalyzer(
-    private val minIntervalMs: Long = 280L,
+    private val minIntervalMs: Long = 220L,
     private val onDetected: (quad: List<Float>, area: Float, aspect: Float) -> Unit
 ) : ImageAnalysis.Analyzer {
 
@@ -20,6 +20,7 @@ class DocumentAnalyzer(
     var enabled: Boolean = true
 
     private var lastRun = 0L
+    private var lastNorm: List<Float>? = null
 
     override fun analyze(image: ImageProxy) {
         val now = SystemClock.elapsedRealtime()
@@ -40,11 +41,15 @@ class DocumentAnalyzer(
                 small = Img.scaleWithin(upright, 460)
                 val quad = DocDetector.detect(small)
                 val area = (quad.area() / (small.width.toFloat() * small.height)).coerceIn(0f, 1f)
-                onDetected(
-                    quad.toNormalized(small.width, small.height),
-                    area,
-                    small.width.toFloat() / small.height.toFloat()
-                )
+                val normalized = quad.toNormalized(small.width, small.height)
+                val previous = lastNorm
+                val smoothed = if (previous != null && previous.size == normalized.size) {
+                    List(normalized.size) { i -> previous[i] * 0.5f + normalized[i] * 0.5f }
+                } else {
+                    normalized
+                }
+                lastNorm = smoothed
+                onDetected(smoothed, area, small.width.toFloat() / small.height.toFloat())
             }
         } catch (t: Throwable) {
             // فریم بعدی

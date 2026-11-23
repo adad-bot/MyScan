@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,8 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -65,6 +67,8 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val scope = rememberCoroutineScope()
     var petalTrigger by remember { mutableIntStateOf(0) }
     var lastLogoTap by remember { mutableLongStateOf(0L) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    var logoAnchor by remember { mutableStateOf(0.87f to 0.09f) }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -89,7 +93,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 onTools = { nav.navigate("tools") },
                 onScan = { startScan() },
                 onGallery = { imagePicker.launch("image/*") },
-                onAbout = { nav.navigate("about") }
+                onDocs = { nav.navigate("docs") }
             )
         }
     ) { padding ->
@@ -106,7 +110,12 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                             lastLogoTap = now
                         },
                         onSettings = { nav.navigate("settings") },
-                        onLock = { vm.toggleLock() }
+                        onLock = { vm.toggleLock() },
+                        onLogoPositioned = { x, y ->
+                            if (view.width > 0 && view.height > 0) {
+                                logoAnchor = x / view.width to y / view.height
+                            }
+                        }
                     )
                 }
                 item { DateCard(onCalendar = { nav.navigate("calendar") }) }
@@ -120,12 +129,21 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 }
             }
 
-            if (petalTrigger > 0) {
-                PetalRain(
-                    trigger = petalTrigger,
-                    modifier = Modifier.fillMaxSize(),
-                    onDone = { petalTrigger = 0 }
-                )
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxHeight()
+                    .width(230.dp)
+            ) {
+                if (petalTrigger > 0) {
+                    PetalRain(
+                        trigger = petalTrigger,
+                        modifier = Modifier.fillMaxSize(),
+                        anchorX = 0.86f,
+                        anchorY = 0.07f,
+                        onDone = { petalTrigger = 0 }
+                    )
+                }
             }
         }
     }
@@ -182,7 +200,7 @@ private fun DateCard(onCalendar: () -> Unit) {
                         .border(1.dp, scheme.outlineVariant, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🌞", modifier = Modifier.align(Alignment.TopEnd).padding(9.dp), fontSize = 15.sp)
+                    Text("🌞", modifier = Modifier.align(Alignment.TopStart).padding(9.dp), fontSize = 15.sp)
                     Text("🌿", modifier = Modifier.align(Alignment.BottomStart).padding(9.dp), fontSize = 13.sp)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -193,8 +211,9 @@ private fun DateCard(onCalendar: () -> Unit) {
                         )
                         Text(
                             Calendars.fa(j.jy),
-                            fontSize = 12.sp,
-                            color = scheme.onSurfaceVariant
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = scheme.primary
                         )
                     }
                 }
@@ -333,7 +352,7 @@ private fun HomeBottomBar(
     onTools: () -> Unit,
     onScan: () -> Unit,
     onGallery: () -> Unit,
-    onAbout: () -> Unit
+    onDocs: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(color = scheme.surface, shadowElevation = 8.dp) {
@@ -355,8 +374,8 @@ private fun HomeBottomBar(
                     }
                 }
             }
+            BottomItem(Icons.Filled.Description, "اسناد", false, Modifier.weight(1f), onDocs)
             BottomItem(Icons.Filled.PhotoLibrary, "گالری", false, Modifier.weight(1f), onGallery)
-            BottomItem(Icons.Filled.Info, "درباره", false, Modifier.weight(1f), onAbout)
         }
     }
 }
