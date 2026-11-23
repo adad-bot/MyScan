@@ -151,8 +151,8 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _lockGuard.value = next
         if (!next) _locked.value = false
         postMessage(
-            if (next) "🔒 قفل شد؛ در ورود بعدی ورود رمز الزامی است."
-            else "🔓 قفل باز شد؛ در ورود بعدی رمز خواسته نمی‌شود."
+            if (next) "🔒 قفل شد\nدر ورود بعدی رمز یا اثر انگشت الزامی است."
+            else "🔓 قفل باز شد\nدر ورود بعدی رمز خواسته نمی‌شود."
         )
     }
 

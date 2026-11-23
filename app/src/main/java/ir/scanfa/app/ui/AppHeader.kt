@@ -63,7 +63,8 @@ fun AppHeader(
             46.dp,
             22.dp,
             onLock,
-            highlight = lockGuard
+            highlight = lockGuard,
+            singleTap = true
         )
         Spacer(Modifier.width(8.dp))
         HeaderIconButton(Icons.Filled.Settings, "تنظیمات", 54.dp, 28.dp, onSettings)
@@ -77,10 +78,11 @@ private fun HeaderIconButton(
     size: Dp,
     iconSize: Dp,
     onClick: () -> Unit,
-    highlight: Boolean = false
+    highlight: Boolean = false,
+    singleTap: Boolean = false
 ) {
     Surface(
-        modifier = Modifier.size(size).pressClick { onClick() },
+        modifier = Modifier.size(size).pressClick(requireDoubleTap = if (singleTap) false else null) { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp

@@ -178,7 +178,21 @@ fun AppNav(vm: ScannerViewModel) {
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 92.dp)
-        )
+        ) { data ->
+            androidx.compose.material3.Snackbar(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                modifier = Modifier.padding(horizontal = 12.dp)
+            ) {
+                Text(
+                    data.visuals.message,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
 
         BusyOverlay(busy, progress)
 
