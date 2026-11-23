@@ -262,11 +262,12 @@ private fun SectionHeader(title: String, count: Int) {
         if (count > 0) {
             Text(
                 DateFa.fa(count),
-                fontSize = 11.sp,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
             )
         }
         Spacer(Modifier.weight(1f))
