@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
@@ -70,16 +71,6 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val view = androidx.compose.ui.platform.LocalView.current
     var logoAnchor by remember { mutableStateOf(0.87f to 0.09f) }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val id = vm.createDocument("", null)
-                val page = vm.addPageFromUri(id, uri)
-                if (page != null) nav.navigate("editor/$id/${page.id}") else nav.navigate("doc/$id")
-            }
-        }
-    }
-
     fun startScan() {
         val id = vm.createDocument("", null)
         nav.navigate("camera/$id")
@@ -92,7 +83,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 onHome = {},
                 onTools = { nav.navigate("tools") },
                 onScan = { startScan() },
-                onGallery = { imagePicker.launch("image/*") },
+                onImport = { nav.navigate("import") },
                 onDocs = { nav.navigate("docs") }
             )
         }
@@ -110,7 +101,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                             lastLogoTap = now
                         },
                         onSettings = { nav.navigate("settings") },
-                        onLock = { vm.toggleLock() },
+                        onLock = { vm.toggleLockGuard() },
                         onLogoPositioned = { x, y ->
                             if (view.width > 0 && view.height > 0) {
                                 logoAnchor = x / view.width to y / view.height
@@ -211,7 +202,7 @@ private fun DateCard(onCalendar: () -> Unit) {
                         )
                         Text(
                             Calendars.fa(j.jy),
-                            fontSize = 16.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = scheme.primary
                         )
@@ -351,7 +342,7 @@ private fun HomeBottomBar(
     onHome: () -> Unit,
     onTools: () -> Unit,
     onScan: () -> Unit,
-    onGallery: () -> Unit,
+    onImport: () -> Unit,
     onDocs: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -364,7 +355,7 @@ private fun HomeBottomBar(
             BottomItem(Icons.Filled.Widgets, "ابزارها", false, Modifier.weight(1f), onTools)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Surface(
-                    modifier = Modifier.size(56.dp).pressClick { onScan() },
+                    modifier = Modifier.size(64.dp).pressClick { onScan() },
                     shape = CircleShape,
                     color = scheme.primary,
                     shadowElevation = 6.dp
@@ -375,7 +366,7 @@ private fun HomeBottomBar(
                 }
             }
             BottomItem(Icons.Filled.Description, "اسناد", false, Modifier.weight(1f), onDocs)
-            BottomItem(Icons.Filled.PhotoLibrary, "گالری", false, Modifier.weight(1f), onGallery)
+            BottomItem(Icons.Filled.AddCircle, "وارد کردن", false, Modifier.weight(1f), onImport)
         }
     }
 }
@@ -397,12 +388,12 @@ private fun BottomItem(
             icon,
             contentDescription = label,
             tint = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f),
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(28.dp)
         )
         Spacer(Modifier.height(2.dp))
         Text(
             label,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             color = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
         )
     }

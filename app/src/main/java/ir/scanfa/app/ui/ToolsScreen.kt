@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 fun ToolsScreen(vm: ScannerViewModel, nav: NavHostController) {
     val scope = rememberCoroutineScope()
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 val id = vm.createDocument("", null)
@@ -119,10 +119,10 @@ fun ToolsScreen(vm: ScannerViewModel, nav: NavHostController) {
                     nav.navigate("camera/$id")
                 }
                 ToolCard("از گالری", Icons.Filled.PhotoLibrary, Modifier.weight(1f), enabled = true) {
-                    imagePicker.launch("image/*")
+                    nav.navigate("import")
                 }
                 ToolCard("از PDF", Icons.Filled.PictureAsPdf, Modifier.weight(1f), enabled = true) {
-                    pdfPicker.launch(arrayOf("application/pdf"))
+                    nav.navigate("import")
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

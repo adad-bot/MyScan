@@ -136,6 +136,16 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _locked.value = false
     }
 
+    fun toggleLockGuard() {
+        val next = !prefs.lockEnabled
+        prefs.lockEnabled = next
+        if (!next) _locked.value = false
+        postMessage(
+            if (next) "قفل فعال شد؛ در ورود بعدی رمز یا اثر انگشت خواسته می‌شود."
+            else "قفل باز شد؛ تا روشن‌کردن دوباره، رمز پرسیده نمی‌شود."
+        )
+    }
+
     fun toggleLock() {
         val next = !prefs.lockEnabled
         prefs.lockEnabled = next

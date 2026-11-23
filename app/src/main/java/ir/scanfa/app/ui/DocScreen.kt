@@ -89,7 +89,7 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
 
     LaunchedEffect(docs) { reload() }
 
-    val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 val page = vm.addPageFromUri(docId, uri, if (addToStart) 0 else null)
@@ -284,7 +284,7 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                     }) { Text("عکس‌برداری با دوربین") }
                     TextButton(onClick = {
                         showAdd = false
-                        galleryPicker.launch("image/*")
+                        galleryPicker.launch(arrayOf("image/*"))
                     }) { Text("انتخاب عکس از گالری") }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = addToStart, onCheckedChange = { addToStart = it })

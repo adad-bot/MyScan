@@ -67,6 +67,7 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var showPinDialog by remember { mutableStateOf(false) }
     var showMasterDialog by remember { mutableStateOf(false) }
     var biometricEnabled by remember { mutableStateOf(vm.prefs.biometricEnabled) }
+    var seasonEffects by remember { mutableStateOf(vm.prefs.seasonEffects) }
     val context = LocalContext.current
     var skin by remember { mutableStateOf(vm.prefs.skin) }
     var uiScale by remember { mutableStateOf(vm.prefs.uiScale) }
@@ -171,15 +172,30 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 }
             }
 
+            SettingCard("جلوه‌های فصلی") {
+                SwitchRow(
+                    "گل و برگ و برف",
+                    "تقویم بر اساس فصل، آرام گل، برگ یا برف نشان می‌دهد.",
+                    seasonEffects
+                ) {
+                    seasonEffects = it
+                    vm.prefs.seasonEffects = it
+                }
+            }
+
             SettingCard("اندازهٔ متن و آیکن‌ها") {
                 val level = ((uiScale - 0.85f) / 0.0825f + 1f).roundToInt().coerceIn(1, 5)
+                var slider by remember(level) { mutableStateOf(level.toFloat()) }
                 Text(
                     "سطح ${DateFa.fa(level)} از ۵  (${DateFa.fa((uiScale * 100).toInt())}٪)",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Slider(
-                    value = level.toFloat(),
-                    onValueChange = { vm.setUiLevel(it.roundToInt().coerceIn(1, 5)) },
+                    value = slider,
+                    onValueChange = {
+                        slider = it
+                        vm.setUiLevel(it.roundToInt().coerceIn(1, 5))
+                    },
                     valueRange = 1f..5f,
                     steps = 3
                 )

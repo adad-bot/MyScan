@@ -64,12 +64,15 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
         AppHeader(
             onLogoClick = { nav.navigate("about") },
             onSettings = { nav.navigate("settings") },
-            onLock = { vm.toggleLock() }
+            onLock = { vm.toggleLockGuard() }
         )
     }) { padding ->
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            if (vm.prefs.seasonEffects) {
+                SeasonEffect(month = Calendars.d2j(selected).jm, modifier = Modifier.fillMaxSize())
+            }
         Column(
             Modifier
-                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
@@ -90,7 +93,8 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "${Calendars.jalaliMonths[viewMonth - 1]} ${Calendars.fa(viewYear)}",
-                                style = MaterialTheme.typography.titleLarge
+                                fontSize = 23.sp,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 Calendars.hijriText(Calendars.j2d(viewYear, viewMonth, 15)),
@@ -155,6 +159,7 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
         }
     }
 }
@@ -243,7 +248,7 @@ private fun DayCell(day: Int, selected: Boolean, today: Boolean, modifier: Modif
         ) {
             Text(
                 Calendars.fa(day),
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 color = when {
                     selected -> scheme.onPrimary
                     today -> scheme.onPrimaryContainer

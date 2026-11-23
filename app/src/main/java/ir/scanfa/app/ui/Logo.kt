@@ -248,39 +248,20 @@ fun PetalRain(
     val context = LocalContext.current
     val progress = remember(trigger) { Animatable(0f) }
 
-    DisposableEffect(trigger) {
-        val player = try {
-            MediaPlayer.create(context, R.raw.rose)?.apply {
-                setVolume(0.6f, 0.6f)
-                start()
-            }
-        } catch (t: Throwable) {
-            null
-        }
-        onDispose {
-            try {
-                player?.stop()
-                player?.release()
-            } catch (t: Throwable) {
-                // نادیده‌گرفتنی
-            }
-        }
-    }
-
     LaunchedEffect(trigger) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(2600, easing = LinearEasing))
+        progress.animateTo(1f, tween(3400, easing = LinearEasing))
         onDone()
     }
 
     val petals = remember(trigger) {
         val emojis = listOf("\uD83C\uDF39", "\uD83C\uDF38", "\uD83C\uDF3A", "\uD83C\uDF43", "\u2740")
-        List(46) { i ->
+        List(26) { i ->
             Petal(
                 emoji = emojis[i % emojis.size],
-                dx = (Math.random() * 140 - 70).toFloat(),
-                delay = (Math.random() * 0.35).toFloat(),
-                size = (13 + Math.random() * 14).toFloat(),
+                dx = (Math.random() * 70 - 35).toFloat(),
+                delay = (Math.random() * 0.15).toFloat(),
+                size = (10 + Math.random() * 8).toFloat(),
                 spin = (Math.random() * 2 - 1).toFloat()
             )
         }

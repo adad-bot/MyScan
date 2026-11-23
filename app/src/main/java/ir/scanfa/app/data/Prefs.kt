@@ -54,6 +54,11 @@ class Prefs(context: Context) {
         get() = sp.getString("skin", "emerald") ?: "emerald"
         set(value) = sp.edit().putString("skin", value).apply()
 
+    /** جلوه‌های فصلی تقویم (گل/برگ/برف/نور) */
+    var seasonEffects: Boolean
+        get() = sp.getBoolean("season_effects", true)
+        set(value) = sp.edit().putBoolean("season_effects", value).apply()
+
     /** قفل برنامه با رمز ۶ رقمی */
     var lockEnabled: Boolean
         get() = sp.getBoolean("lock_enabled", false)

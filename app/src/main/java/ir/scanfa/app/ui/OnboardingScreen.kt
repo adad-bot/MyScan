@@ -36,7 +36,7 @@ fun OnboardingScreen(vm: ScannerViewModel) {
             Spacer(Modifier.height(8.dp))
             Text(
                 "برای امنیت اسناد، در تنظیمات یک رمز ۶ رقمی و کد مادر تعیین کن. " +
-                    "کد بازیابی ۵۶۳۵۷۰ همیشه در دسترس است؛ آن را جایی امن نگه دار.",
+                    "کد بازیابی را نیز همان‌جا ببین و جایی امن نگه دار.",
                 fontSize = 14.sp,
                 color = scheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

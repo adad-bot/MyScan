@@ -42,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.fragment.app.FragmentActivity
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.delay
 
@@ -55,7 +54,7 @@ private enum class LockMode { UNLOCK, SETUP1, SETUP2, MASTER, NEW1, NEW2 }
 @Composable
 fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
     val context = LocalContext.current
-    val activity = context as? FragmentActivity
+    val activity = context as? android.app.Activity
     val scheme = MaterialTheme.colorScheme
     val biometricReady = vm.prefs.biometricEnabled && Biometric.available(context)
 
@@ -77,7 +76,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
         LockMode.UNLOCK -> "رمز ۶ رقمی"
         LockMode.SETUP1, LockMode.NEW1 -> "مرحلهٔ ۱ از ۲"
         LockMode.SETUP2, LockMode.NEW2 -> "مرحلهٔ ۲ از ۲"
-        LockMode.MASTER -> "کد مادر یا کد بازیابی ۵۶۳۵۷۰"
+        LockMode.MASTER -> "کد مادر یا کد بازیابی"
     }
 
     fun submit(digits: String) {
@@ -162,16 +161,16 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 22.dp)
-                .padding(bottom = 112.dp),
+                .padding(bottom = 150.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(8.dp))
-            MyScanLogo(size = 64.dp)
+            Spacer(Modifier.height(14.dp))
+            MyScanLogo(size = 92.dp)
             Spacer(Modifier.height(10.dp))
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
             Spacer(Modifier.height(12.dp))
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface, textAlign = TextAlign.Center)
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
             Text(subtitle, fontSize = 12.sp, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
@@ -182,7 +181,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                     val filled = index < buffer.length
                     Box(
                         Modifier
-                            .size(14.dp)
+                            .size(16.dp)
                             .then(
                                 if (filled) Modifier.background(scheme.primary, CircleShape)
                                 else Modifier.border(1.5.dp, scheme.outline, CircleShape)
@@ -206,10 +205,10 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             )
             keys.forEach { row ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { key ->
                             Surface(
-                                modifier = Modifier.size(56.dp).pressClick { press(key) },
+                                modifier = Modifier.size(66.dp).pressClick { press(key) },
                                 shape = RoundedCornerShape(18.dp),
                                 color = scheme.surface,
                                 border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
