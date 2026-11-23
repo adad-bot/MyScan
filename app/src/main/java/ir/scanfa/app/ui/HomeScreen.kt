@@ -65,6 +65,7 @@ import java.io.File
 @Composable
 fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val docs by vm.docs.collectAsState()
+    val lockGuard by vm.lockGuard.collectAsState()
     val scope = rememberCoroutineScope()
     var petalTrigger by remember { mutableIntStateOf(0) }
     var lastLogoTap by remember { mutableLongStateOf(0L) }
@@ -102,6 +103,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                         },
                         onSettings = { nav.navigate("settings") },
                         onLock = { vm.toggleLockGuard() },
+                        lockGuard = lockGuard,
                         onLogoPositioned = { x, y ->
                             if (view.width > 0 && view.height > 0) {
                                 logoAnchor = x / view.width to y / view.height

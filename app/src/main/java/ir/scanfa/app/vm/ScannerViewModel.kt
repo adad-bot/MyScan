@@ -66,6 +66,9 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _pinSetup = MutableStateFlow(false)
     val pinSetup: StateFlow<Boolean> = _pinSetup.asStateFlow()
 
+    private val _lockGuard = MutableStateFlow(false)
+    val lockGuard: StateFlow<Boolean> = _lockGuard.asStateFlow()
+
     private val _doubleTap = MutableStateFlow(true)
     val doubleTap: StateFlow<Boolean> = _doubleTap.asStateFlow()
 
@@ -83,6 +86,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _doubleTap.value = prefs.doubleTap
         val freshBoot = android.os.SystemClock.elapsedRealtime() < 120_000L
         _locked.value = prefs.pinHash.isNotEmpty() && (prefs.lockEnabled || freshBoot)
+        _lockGuard.value = prefs.lockEnabled
         _uiScale.value = prefs.uiScale
         refresh()
     }
@@ -134,6 +138,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _pinSetup.value = false
         val freshBoot = android.os.SystemClock.elapsedRealtime() < 120_000L
         _locked.value = prefs.pinHash.isNotEmpty() && (prefs.lockEnabled || freshBoot)
+        _lockGuard.value = prefs.lockEnabled
     }
 
     fun unlock() {
@@ -143,10 +148,11 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleLockGuard() {
         val next = !prefs.lockEnabled
         prefs.lockEnabled = next
+        _lockGuard.value = next
         if (!next) _locked.value = false
         postMessage(
-            if (next) "قفل فعال شد؛ در ورود بعدی رمز یا اثر انگشت خواسته می‌شود."
-            else "قفل باز شد؛ تا روشن‌کردن دوباره، رمز پرسیده نمی‌شود."
+            if (next) "🔒 قفل شد؛ در ورود بعدی ورود رمز الزامی است."
+            else "🔓 قفل باز شد؛ در ورود بعدی رمز خواسته نمی‌شود."
         )
     }
 
@@ -162,6 +168,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setLockEnabled(enabled: Boolean) {
         prefs.lockEnabled = enabled
+        _lockGuard.value = enabled
         if (!enabled) _locked.value = false
     }
 

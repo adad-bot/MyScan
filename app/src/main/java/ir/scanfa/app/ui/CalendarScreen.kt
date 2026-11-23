@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -48,6 +49,7 @@ import kotlin.math.ceil
 
 @Composable
 fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
+    val lockGuard by vm.lockGuard.collectAsState()
     val today = remember { Calendars.todayJdn() }
     var selected by remember { mutableLongStateOf(today) }
     val startJ = remember { Calendars.d2j(today) }

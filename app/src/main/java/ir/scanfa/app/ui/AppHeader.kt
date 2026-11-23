@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ fun AppHeader(
     onLogoClick: () -> Unit,
     onSettings: () -> Unit,
     onLock: () -> Unit,
+    lockGuard: Boolean = true,
     onLogoPositioned: ((Float, Float) -> Unit)? = null
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -55,7 +57,14 @@ fun AppHeader(
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
         }
         Spacer(Modifier.weight(1f))
-        HeaderIconButton(Icons.Filled.Lock, "قفل", 46.dp, 22.dp, onLock)
+        HeaderIconButton(
+            if (lockGuard) Icons.Filled.Lock else Icons.Filled.LockOpen,
+            if (lockGuard) "قفل" else "قفل باز",
+            46.dp,
+            22.dp,
+            onLock,
+            highlight = lockGuard
+        )
         Spacer(Modifier.width(8.dp))
         HeaderIconButton(Icons.Filled.Settings, "تنظیمات", 54.dp, 28.dp, onSettings)
     }
@@ -67,7 +76,8 @@ private fun HeaderIconButton(
     label: String,
     size: Dp,
     iconSize: Dp,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    highlight: Boolean = false
 ) {
     Surface(
         modifier = Modifier.size(size).pressClick { onClick() },
@@ -79,7 +89,7 @@ private fun HeaderIconButton(
             Icon(
                 icon,
                 contentDescription = label,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(iconSize)
             )
         }
