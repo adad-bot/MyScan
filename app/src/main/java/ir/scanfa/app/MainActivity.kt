@@ -20,6 +20,7 @@ import ir.scanfa.app.ui.AppNav
 import ir.scanfa.app.ui.LocalDoubleTapEnabled
 import ir.scanfa.app.ui.LocalHapticsEnabled
 import ir.scanfa.app.ui.ScannerTheme
+import ir.scanfa.app.ui.Skins
 import ir.scanfa.app.vm.ScannerViewModel
 
 class MainActivity : ComponentActivity() {
@@ -41,8 +42,12 @@ class MainActivity : ComponentActivity() {
             val view = LocalView.current
             SideEffect {
                 val window = window ?: return@SideEffect
-                window.navigationBarColor = android.graphics.Color.TRANSPARENT
                 window.statusBarColor = android.graphics.Color.TRANSPARENT
+                val skinColor = (Skins.firstOrNull { it.id == skin } ?: Skins.first())
+                window.navigationBarColor = if (dark) skinColor.darkPrimaryContainer.toInt() else skinColor.primaryContainer.toInt()
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    window.isNavigationBarContrastEnforced = false
+                }
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = false
                     isAppearanceLightNavigationBars = !dark

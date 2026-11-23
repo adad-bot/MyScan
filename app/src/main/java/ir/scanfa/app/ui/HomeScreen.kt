@@ -346,11 +346,18 @@ private fun HomeBottomBar(
     onDocs: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    Surface(color = scheme.surface, shadowElevation = 8.dp) {
-        Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 6.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Surface(color = scheme.primaryContainer, shadowElevation = 10.dp) {
+        Column {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(scheme.primary.copy(alpha = 0.25f))
+            )
+            Row(
+                Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 4.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             BottomItem(Icons.Filled.Home, "خانه", true, Modifier.weight(1f), onHome)
             BottomItem(Icons.Filled.Widgets, "ابزارها", false, Modifier.weight(1f), onTools)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -361,12 +368,18 @@ private fun HomeBottomBar(
                     shadowElevation = 6.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.CameraAlt, contentDescription = "اسکن", tint = scheme.onPrimary)
+                        Icon(
+                            Icons.Filled.CameraAlt,
+                            contentDescription = "اسکن",
+                            tint = scheme.onPrimary,
+                            modifier = Modifier.size(30.dp)
+                        )
                     }
                 }
             }
             BottomItem(Icons.Filled.Description, "اسناد", false, Modifier.weight(1f), onDocs)
             BottomItem(Icons.Filled.AddCircle, "وارد کردن", false, Modifier.weight(1f), onImport)
+            }
         }
     }
 }
@@ -380,6 +393,7 @@ private fun BottomItem(
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val tint = if (selected) scheme.primary else scheme.onPrimaryContainer
     Column(
         modifier = modifier.pressClick { onClick() }.padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -387,14 +401,15 @@ private fun BottomItem(
         Icon(
             icon,
             contentDescription = label,
-            tint = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f),
-            modifier = Modifier.size(28.dp)
+            tint = tint,
+            modifier = Modifier.size(if (selected) 30.dp else 28.dp)
         )
         Spacer(Modifier.height(2.dp))
         Text(
             label,
             fontSize = 11.sp,
-            color = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = tint
         )
     }
 }
