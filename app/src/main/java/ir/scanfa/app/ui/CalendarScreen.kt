@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.util.Calendars
+import ir.scanfa.app.util.Occasions
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlin.math.ceil
 
@@ -141,6 +142,31 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                     }
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            val events = Occasions.forJdn(selected)
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("مناسبت‌های این روز", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    if (events.isEmpty()) {
+                        Text(
+                            "مناسبت ثبت‌شده‌ای برای این روز نیست.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        events.forEach { event ->
+                            Text("• $event", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(4.dp))
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(18.dp))
             Text(
                 "بر پایهٔ تقویم شمسی؛ معادل میلادی و قمری برای هر روز نمایش داده می‌شود.",

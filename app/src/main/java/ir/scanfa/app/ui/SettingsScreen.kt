@@ -46,7 +46,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import kotlin.math.roundToInt
 import ir.scanfa.app.util.DateFa
 import ir.scanfa.app.vm.ScannerViewModel
 
@@ -61,6 +63,9 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var autoDetect by remember { mutableStateOf(vm.prefs.autoDetect) }
     var haptics by remember { mutableStateOf(vm.prefs.hapticsEnabled) }
     var theme by remember { mutableStateOf(vm.prefs.themeMode) }
+    var lockEnabled by remember { mutableStateOf(vm.prefs.lockEnabled) }
+    var biometricEnabled by remember { mutableStateOf(vm.prefs.biometricEnabled) }
+    val context = LocalContext.current
     var skin by remember { mutableStateOf(vm.prefs.skin) }
     var uiScale by remember { mutableStateOf(vm.prefs.uiScale) }
 
@@ -74,6 +79,31 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            SettingCard("قفل و امنیت") {
+                SwitchRow(
+                    "قفل با رمز ۶ رقمی",
+                    "هنگام ورود، رمز خواسته می‌شود؛ کد مادر برای بازیابی است.",
+                    lockEnabled
+                ) {
+                    lockEnabled = it
+                    vm.setLockEnabled(it)
+                    if (it && !vm.hasPin()) vm.requestPinSetup()
+                }
+                TextButton(onClick = { vm.requestPinSetup() }) {
+                    Text(if (vm.hasPin()) "تغییر رمز" else "تعیین رمز")
+                }
+                if (Biometric.available(context)) {
+                    SwitchRow(
+                        "باز کردن با اثر انگشت",
+                        "در صفحهٔ قفل، انگشت هم پذیرفته می‌شود.",
+                        biometricEnabled
+                    ) {
+                        biometricEnabled = it
+                        vm.setBiometricEnabled(it)
+                    }
+                }
+            }
+
             SettingCard("ظاهر برنامه") {
                 Text(
                     "تم دلخواهت را انتخاب کن؛ تغییر فوری اعمال می‌شود.",
@@ -131,17 +161,16 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
             }
 
             SettingCard("اندازهٔ متن و آیکن‌ها") {
+                val level = ((uiScale - 0.85f) / 0.05f + 1f).roundToInt().coerceIn(1, 10)
                 Text(
-                    "بزرگ‌نمایی: ${DateFa.fa((uiScale * 100).toInt())}٪",
+                    "سطح ${DateFa.fa(level)} از ۱۰  (${DateFa.fa((uiScale * 100).toInt())}٪)",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Slider(
-                    value = uiScale,
-                    onValueChange = {
-                        uiScale = it
-                        vm.setUiScale(it)
-                    },
-                    valueRange = 0.9f..1.3f
+                    value = level.toFloat(),
+                    onValueChange = { vm.setUiLevel(it.roundToInt().coerceIn(1, 10)) },
+                    valueRange = 1f..10f,
+                    steps = 8
                 )
                 Text(
                     "با تغییر این مقدار، متن‌ها و آیکن‌های کل برنامه بزرگ یا کوچک می‌شوند.",

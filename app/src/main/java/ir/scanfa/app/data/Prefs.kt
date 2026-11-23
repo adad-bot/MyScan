@@ -54,8 +54,24 @@ class Prefs(context: Context) {
         get() = sp.getString("skin", "emerald") ?: "emerald"
         set(value) = sp.edit().putString("skin", value).apply()
 
-    /** بزرگ‌نمایی متن و آیکن‌ها (۱٫۰ تا ۱٫۳) */
-    var uiScale: Float
-        get() = sp.getFloat("ui_scale", 1f)
-        set(value) = sp.edit().putFloat("ui_scale", value.coerceIn(0.9f, 1.3f)).apply()
+    /** قفل برنامه با رمز ۶ رقمی */
+    var lockEnabled: Boolean
+        get() = sp.getBoolean("lock_enabled", false)
+        set(value) = sp.edit().putBoolean("lock_enabled", value).apply()
+
+    var pinHash: String
+        get() = sp.getString("pin_hash", "") ?: ""
+        set(value) = sp.edit().putString("pin_hash", value).apply()
+
+    var biometricEnabled: Boolean
+        get() = sp.getBoolean("biometric_enabled", true)
+        set(value) = sp.edit().putBoolean("biometric_enabled", value).apply()
+
+    /** سطح بزرگ‌نمایی ۱ تا ۱۰ (پله‌ای، نه پیوسته) */
+    var uiLevel: Int
+        get() = sp.getInt("ui_level", 6).coerceIn(1, 10)
+        set(value) = sp.edit().putInt("ui_level", value.coerceIn(1, 10)).apply()
+
+    val uiScale: Float
+        get() = 0.85f + (uiLevel - 1) * 0.05f
 }

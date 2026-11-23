@@ -57,6 +57,12 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _locked = MutableStateFlow(false)
+    val locked: StateFlow<Boolean> = _locked.asStateFlow()
+
+    private val _pinSetup = MutableStateFlow(false)
+    val pinSetup: StateFlow<Boolean> = _pinSetup.asStateFlow()
+
     private val _skin = MutableStateFlow("emerald")
     val skin: StateFlow<String> = _skin.asStateFlow()
 
@@ -68,6 +74,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _themeMode.value = prefs.themeMode
         _haptics.value = prefs.hapticsEnabled
         _skin.value = prefs.skin
+        _locked.value = prefs.lockEnabled && prefs.pinHash.isNotEmpty()
         _uiScale.value = prefs.uiScale
         refresh()
     }
@@ -82,14 +89,59 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _haptics.value = enabled
     }
 
+    fun hasPin(): Boolean = prefs.pinHash.isNotEmpty()
+
+    fun pinMatches(pin: String): Boolean = hashPin(pin) == prefs.pinHash
+
+    fun savePin(pin: String) {
+        prefs.pinHash = hashPin(pin)
+        prefs.lockEnabled = true
+        _pinSetup.value = false
+        _locked.value = false
+        refresh()
+    }
+
+    fun requestPinSetup() {
+        _pinSetup.value = true
+        _locked.value = true
+    }
+
+    fun cancelPinSetup() {
+        _pinSetup.value = false
+        _locked.value = prefs.lockEnabled && prefs.pinHash.isNotEmpty()
+    }
+
+    fun unlock() {
+        _locked.value = false
+    }
+
+    fun lockNow() {
+        if (prefs.lockEnabled && prefs.pinHash.isNotEmpty()) _locked.value = true
+    }
+
+    fun setLockEnabled(enabled: Boolean) {
+        prefs.lockEnabled = enabled
+        if (!enabled) _locked.value = false
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        prefs.biometricEnabled = enabled
+    }
+
+    private fun hashPin(pin: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val bytes = digest.digest(("myscan:" + pin).toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
     fun setSkin(id: String) {
         prefs.skin = id
         _skin.value = id
     }
 
-    fun setUiScale(value: Float) {
-        prefs.uiScale = value
-        _uiScale.value = value.coerceIn(0.9f, 1.3f)
+    fun setUiLevel(level: Int) {
+        prefs.uiLevel = level
+        _uiScale.value = prefs.uiScale
     }
 
     fun refresh() {
@@ -123,7 +175,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         return id
     }
 
-    suspend fun addPageFromUri(docId: String, uri: Uri): Page? = withContext(Dispatchers.IO) {
+    suspend fun addPageFromUri(docId: String, uri: Uri, insertAt: Int? = null): Page? = withContext(Dispatchers.IO) {
         val tmp = File(getApplication<Application>().cacheDir, "import_${System.currentTimeMillis()}.jpg")
         val copied = try {
             getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
@@ -133,7 +185,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             false
         }
         if (!copied) return@withContext null
-        val page = createPageFromFile(docId, tmp, autoEnhance = false)
+        val page = createPageFromFile(docId, tmp, autoEnhance = false, insertAt = insertAt)
         tmp.delete()
         page
     }
@@ -165,7 +217,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             page
         }
 
-    private fun createPageFromFile(docId: String, source: File, autoEnhance: Boolean): Page? {
+    private fun createPageFromFile(docId: String, source: File, autoEnhance: Boolean, insertAt: Int? = null): Page? {
         val doc = DocStore.load(docId) ?: return null
         val target = DocStore.newImageFile(docId, "orig")
         try {
@@ -190,7 +242,11 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             filter = if (autoEnhance) FilterKind.ENHANCE.id else FilterKind.ORIGINAL.id,
             crop = crop
         )
-        doc.pages.add(page)
+        if (insertAt != null && insertAt in 0..doc.pages.size) {
+            doc.pages.add(insertAt, page)
+        } else {
+            doc.pages.add(page)
+        }
         DocStore.save(doc)
         refresh()
         return page

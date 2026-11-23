@@ -1,4 +1,4 @@
-package ir.scanfa.app.ui
+﻿package ir.scanfa.app.ui
 
 import android.media.MediaPlayer
 import androidx.compose.animation.core.Animatable
@@ -13,6 +13,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -171,10 +174,16 @@ fun MyScanLogo(
 }
 
 /** جشن کوچک: گل رز سه ثانیه‌ای با یک ملودی کوتاه. */
+/**
+ * بارش گل روی لوگو، به همان سبک MyC: ده‌ها گلبرگ ایموجی از مرکز لوگو
+ * با پراکندگی افقی، تأخیر و اندازهٔ تصادفی به پایین می‌ریزند.
+ */
 @Composable
 fun PetalRain(
     trigger: Int,
     modifier: Modifier = Modifier,
+    anchorX: Float = 0.87f,
+    anchorY: Float = 0.09f,
     onDone: () -> Unit = {}
 ) {
     if (trigger == 0) return
@@ -184,7 +193,7 @@ fun PetalRain(
     DisposableEffect(trigger) {
         val player = try {
             MediaPlayer.create(context, R.raw.rose)?.apply {
-                setVolume(0.7f, 0.7f)
+                setVolume(0.6f, 0.6f)
                 start()
             }
         } catch (t: Throwable) {
@@ -202,31 +211,54 @@ fun PetalRain(
 
     LaunchedEffect(trigger) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(2000, easing = LinearEasing))
+        progress.animateTo(1f, tween(2600, easing = LinearEasing))
         onDone()
     }
 
-    Canvas(modifier) {
+    val petals = remember(trigger) {
+        val emojis = listOf("\uD83C\uDF39", "\uD83C\uDF38", "\uD83C\uDF3A", "\uD83C\uDF43", "\u2740")
+        List(46) { i ->
+            Petal(
+                emoji = emojis[i % emojis.size],
+                dx = (Math.random() * 140 - 70).toFloat(),
+                delay = (Math.random() * 0.35).toFloat(),
+                size = (13 + Math.random() * 14).toFloat(),
+                spin = (Math.random() * 2 - 1).toFloat()
+            )
+        }
+    }
+
+    BoxWithConstraints(modifier) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val heightPx = constraints.maxHeight.toFloat()
+        val startX = widthPx * anchorX
+        val startY = heightPx * anchorY
         val t = progress.value
-        repeat(16) { i ->
-            val seed = ((i * 53) % 97) / 97f
-            val baseX = size.width * (0.72f + seed * 0.22f)
-            val drift = (seed - 0.5f) * size.width * 0.38f
-            val x = baseX + drift * t
-            val y = -26.dp.toPx() + (size.height + 70.dp.toPx()) * ((t * 1.2f + seed * 0.55f) % 1f)
-            val angle = t * 540f * (0.4f + seed)
-            rotate(angle, pivot = Offset(x, y)) {
-                drawOval(
-                    color = Color(0xFFFF5C8A).copy(alpha = 0.92f),
-                    topLeft = Offset(x, y),
-                    size = Size(9.dp.toPx(), 13.dp.toPx())
-                )
-                drawOval(
-                    color = Color(0xFFFFC2D6).copy(alpha = 0.85f),
-                    topLeft = Offset(x + 2.dp.toPx(), y + 2.dp.toPx()),
-                    size = Size(5.dp.toPx(), 7.dp.toPx())
-                )
-            }
+
+        petals.forEach { petal ->
+            val local = ((t + petal.delay) % 1f)
+            val density = LocalDensity.current
+            val dxRatio = with(density) { petal.dx.dp.toPx() } / widthPx.coerceAtLeast(1f)
+            val x = startX + dxRatio * widthPx * local
+            val y = startY + (heightPx - startY + 40f) * local
+            Text(
+                petal.emoji,
+                modifier = Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset(x.toInt(), y.toInt()) }
+                    .graphicsLayer {
+                        rotationZ = local * 360f * petal.spin
+                        alpha = (1f - local * 0.25f).coerceIn(0f, 1f)
+                    },
+                fontSize = petal.size.sp
+            )
         }
     }
 }
+
+private data class Petal(
+    val emoji: String,
+    val dx: Float,
+    val delay: Float,
+    val size: Float,
+    val spin: Float
+)

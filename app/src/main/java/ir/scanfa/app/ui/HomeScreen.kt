@@ -3,6 +3,7 @@ package ir.scanfa.app.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,7 +133,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 onPetalDone = { petalTrigger = 0 }
             )
         }
-        item { DateBar(onClick = { nav.navigate("calendar") }) }
+        item { DateOrbit(onClick = { nav.navigate("calendar") }) }
         item {
             QuickActions(
                 onGallery = { imagePicker.launch("image/*") },
@@ -449,40 +450,93 @@ private fun EmptyState(onScan: () -> Unit) {
 }
 
 @Composable
-private fun DateBar(onClick: () -> Unit) {
+private fun DateOrbit(onClick: () -> Unit) {
     val today = remember { Calendars.todayJdn() }
+    val j = remember(today) { Calendars.d2j(today) }
+    val h = remember(today) { Calendars.toHijri(today) }
+    val g = remember(today) { Calendars.d2g(today) }
     val scheme = MaterialTheme.colorScheme
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .pressClick { onClick() },
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(26.dp),
         color = scheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant)
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Filled.CalendarMonth,
-                contentDescription = "تقویم",
-                tint = scheme.primary
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.End
+            ) {
                 Text(
-                    "${Calendars.weekdayName(today)} ${Calendars.jalaliText(today)}",
-                    style = MaterialTheme.typography.titleSmall
+                    Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "میلادی: ${Calendars.gregorianText(today)}  •  قمری: ${Calendars.hijriText(today)}",
-                    style = MaterialTheme.typography.labelSmall,
+                    "${Calendars.gregorianMonths[(g.second - 1).coerceIn(0, 11)]} ${g.first}",
+                    style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant
                 )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    g.third.toString(),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.primary
+                )
             }
-            Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = scheme.outline)
+
+            Box(
+                Modifier
+                    .size(92.dp)
+                    .background(scheme.primaryContainer, CircleShape)
+                    .border(2.dp, scheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        Calendars.fa(j.jd),
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.onPrimaryContainer
+                    )
+                    Text(
+                        "شمسی",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    Calendars.weekdayName(today),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    Calendars.fa(h.hd),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.primary
+                )
+            }
         }
     }
 }

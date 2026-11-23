@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.vm.ScannerViewModel
 
@@ -65,7 +66,7 @@ fun AboutScreen(vm: ScannerViewModel, nav: NavHostController) {
                 Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "گروه فناوری کرانه ماندگار",
-                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         textAlign = TextAlign.Center
@@ -73,14 +74,16 @@ fun AboutScreen(vm: ScannerViewModel, nav: NavHostController) {
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "علی دادمان",
-                        style = MaterialTheme.typography.titleSmall,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "۰۹۳۹۴۷۱۱۰۴۹",
-                            style = MaterialTheme.typography.bodyLarge,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         IconButton(onClick = {
@@ -109,7 +112,7 @@ fun AboutScreen(vm: ScannerViewModel, nav: NavHostController) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("این برنامه چه کار می‌کند؟", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                    Text("این برنامه چه کار می‌کند؟", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(10.dp))
                     Feature("اسکن خودکار با تشخیص زندهٔ قاب سند و ثبت هوشمند")
                     Feature("اصلاح پرسپکتیو، چرخش و چهار فیلتر تصویری")
@@ -137,7 +140,7 @@ fun AboutScreen(vm: ScannerViewModel, nav: NavHostController) {
 private fun Feature(text: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Box(Modifier.width(6.dp))
-        Text("•  ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        Text("•  ", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+        Text(text, fontSize = 16.sp, lineHeight = 24.sp)
     }
 }
