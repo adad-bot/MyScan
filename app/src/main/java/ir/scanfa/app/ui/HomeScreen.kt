@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -166,29 +167,40 @@ private fun HomeTopBar(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SquareIconButton(Icons.Filled.Settings, "تنظیمات", onSettings)
-        Spacer(Modifier.width(8.dp))
-        SquareIconButton(Icons.Filled.Lock, "قفل", onLock)
-        Spacer(Modifier.weight(1f))
-        Column(horizontalAlignment = Alignment.End) {
+        MyScanLogo(size = 56.dp, onClick = onLogoClick)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
         }
-        Spacer(Modifier.width(10.dp))
-        MyScanLogo(size = 52.dp, onClick = onLogoClick)
+        Spacer(Modifier.width(12.dp))
+        SquareIconButton(Icons.Filled.Lock, "قفل", 48.dp, 24.dp, onLock)
+        Spacer(Modifier.width(8.dp))
+        SquareIconButton(Icons.Filled.Settings, "تنظیمات", 56.dp, 30.dp, onSettings)
     }
 }
 
 @Composable
-private fun SquareIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun SquareIconButton(
+    icon: ImageVector,
+    label: String,
+    size: Dp,
+    iconSize: Dp,
+    onClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier.size(48.dp).pressClick { onClick() },
+        modifier = Modifier.size(size).pressClick { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(iconSize)
+            )
         }
     }
 }
@@ -215,10 +227,13 @@ private fun DateCard(onCalendar: () -> Unit) {
                         listOf(scheme.primaryContainer.copy(alpha = 0.55f), scheme.surface)
                     )
                 )
-                .padding(horizontal = 14.dp, vertical = 16.dp)
+                .padding(horizontal = 12.dp, vertical = 18.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Column(
+                    Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
                         Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
                         fontSize = 20.sp,
@@ -239,30 +254,33 @@ private fun DateCard(onCalendar: () -> Unit) {
 
                 Box(
                     Modifier
-                        .size(100.dp)
+                        .size(104.dp)
                         .background(scheme.surface, CircleShape)
                         .border(1.dp, scheme.outlineVariant, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🌞", modifier = Modifier.align(Alignment.TopEnd).padding(10.dp), fontSize = 16.sp)
-                    Text("🌿", modifier = Modifier.align(Alignment.BottomStart).padding(10.dp), fontSize = 14.sp)
+                    Text("🌞", modifier = Modifier.align(Alignment.TopEnd).padding(9.dp), fontSize = 15.sp)
+                    Text("🌿", modifier = Modifier.align(Alignment.BottomStart).padding(9.dp), fontSize = 13.sp)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             Calendars.fa(j.jd),
-                            fontSize = 40.sp,
+                            fontSize = 38.sp,
                             fontWeight = FontWeight.Bold,
                             color = scheme.onSurface
                         )
                         Text(
                             Calendars.fa(j.jy),
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = scheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    Text(Calendars.weekdayName(today), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Column(
+                    Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(Calendars.weekdayName(today), fontSize = 19.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
                         fontSize = 13.sp,
@@ -277,16 +295,8 @@ private fun DateCard(onCalendar: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (offset in -3..3) {
-                    val jdn = today + offset
-                    MiniDay(jdn, (today + offset) == today, Modifier.weight(1f))
-                }
-            }
-
             if (events.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(14.dp))
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = scheme.primaryContainer.copy(alpha = 0.5f)
@@ -308,36 +318,6 @@ private fun DateCard(onCalendar: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun MiniDay(jdn: Long, isToday: Boolean, modifier: Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    val j = Calendars.d2j(jdn)
-    val g = Calendars.d2g(jdn)
-    val h = Calendars.toHijri(jdn)
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isToday) scheme.surface else scheme.surface.copy(alpha = 0.55f))
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            Calendars.weekdays[Calendars.weekdayIndex(jdn)].take(4),
-            fontSize = 9.sp,
-            color = scheme.onSurfaceVariant,
-            maxLines = 1
-        )
-        Text(
-            Calendars.fa(j.jd),
-            fontSize = 15.sp,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-            color = if (isToday) scheme.primary else scheme.onSurface
-        )
-        Text("${g.third}", fontSize = 8.sp, color = scheme.onSurfaceVariant)
-        Text("${Calendars.fa(h.hd)}", fontSize = 8.sp, color = scheme.onSurfaceVariant)
     }
 }
 

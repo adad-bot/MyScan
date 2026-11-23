@@ -81,6 +81,7 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     var slotDialog by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
+    var addToStart by remember { mutableStateOf(false) }
 
     fun reload() {
         doc = vm.load(docId)
@@ -91,7 +92,7 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             scope.launch {
-                val page = vm.addPageFromUri(docId, uri)
+                val page = vm.addPageFromUri(docId, uri, if (addToStart) 0 else null)
                 reload()
                 if (page != null) nav.navigate("editor/$docId/${page.id}")
             }
@@ -240,9 +241,32 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("${DateFa.fa(selected.size)} صفحه انتخاب شده", style = MaterialTheme.typography.bodySmall)
+                    Text("${DateFa.fa(selected.size)} انتخاب", style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { selected.clear() }) { Text("لغو انتخاب") }
+                    if (selected.size == 1) {
+                        val idx = doc?.pages?.indexOfFirst { it.id == selected.first() } ?: -1
+                        if (idx > 0) {
+                            TextButton(onClick = {
+                                vm.movePage(docId, idx, 0)
+                                selected.clear()
+                                reload()
+                            }) { Text("به ابتدا", style = MaterialTheme.typography.labelSmall) }
+                        }
+                        val last = (doc?.pages?.size ?: 1) - 1
+                        if (idx in 0 until last) {
+                            TextButton(onClick = {
+                                vm.movePage(docId, idx, last)
+                                selected.clear()
+                                reload()
+                            }) { Text("به انتها", style = MaterialTheme.typography.labelSmall) }
+                        }
+                    }
+                    TextButton(onClick = {
+                        vm.deletePages(docId, selected.toList())
+                        selected.clear()
+                        reload()
+                    }) { Text("حذف", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+                    TextButton(onClick = { selected.clear() }) { Text("لغو", style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
@@ -262,6 +286,10 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                         showAdd = false
                         galleryPicker.launch("image/*")
                     }) { Text("انتخاب عکس از گالری") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = addToStart, onCheckedChange = { addToStart = it })
+                        Text("افزودن به ابتدای سند", style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             },
             confirmButton = {

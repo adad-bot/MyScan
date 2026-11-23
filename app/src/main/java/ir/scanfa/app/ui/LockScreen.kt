@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
@@ -36,7 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -51,14 +49,15 @@ import kotlinx.coroutines.delay
 private enum class LockMode { UNLOCK, SETUP1, SETUP2, MASTER, NEW1, NEW2 }
 
 /**
- * صفحهٔ قفل با ساختار MyC (دایره‌های رمز، کیبورد مربعی، فراموشی رمز و اثر انگشت)
- * اما با رنگ و لوگوی MyScan. کد مادر پیش‌فرض: ۱۳۷۵۱۳
+ * صفحهٔ قفل: دایره‌های رمز، کیبورد مربعی، فراموشی رمز،
+ * اثر انگشت و «Developed by Ali Dadman» در پایین صفحه.
  */
 @Composable
 fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scheme = MaterialTheme.colorScheme
+    val biometricReady = vm.prefs.biometricEnabled && Biometric.available(context)
 
     var mode by remember { mutableStateOf(if (initialSetup || !vm.hasPin()) LockMode.SETUP1 else LockMode.UNLOCK) }
     var buffer by remember { mutableStateOf("") }
@@ -83,15 +82,13 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
 
     fun submit(digits: String) {
         when (mode) {
-            LockMode.UNLOCK -> {
-                if (vm.pinMatches(digits)) {
-                    buffer = ""
-                    error = ""
-                    vm.unlock()
-                } else {
-                    error = "رمز اشتباه است"
-                    buffer = ""
-                }
+            LockMode.UNLOCK -> if (vm.pinMatches(digits)) {
+                buffer = ""
+                error = ""
+                vm.unlock()
+            } else {
+                error = "رمز اشتباه است"
+                buffer = ""
             }
             LockMode.SETUP1, LockMode.NEW1 -> {
                 firstPin = digits
@@ -99,27 +96,23 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 error = ""
                 mode = if (mode == LockMode.SETUP1) LockMode.SETUP2 else LockMode.NEW2
             }
-            LockMode.SETUP2, LockMode.NEW2 -> {
-                if (digits == firstPin) {
-                    buffer = ""
-                    error = ""
-                    vm.savePin(digits)
-                } else {
-                    error = "رمزها یکسان نیستند؛ دوباره تلاش کن"
-                    buffer = ""
-                    firstPin = ""
-                    mode = LockMode.SETUP1
-                }
+            LockMode.SETUP2, LockMode.NEW2 -> if (digits == firstPin) {
+                buffer = ""
+                error = ""
+                vm.savePin(digits)
+            } else {
+                error = "رمزها یکسان نیستند؛ دوباره تلاش کن"
+                buffer = ""
+                firstPin = ""
+                mode = LockMode.SETUP1
             }
-            LockMode.MASTER -> {
-                if (digits == "137513") {
-                    buffer = ""
-                    error = ""
-                    mode = LockMode.NEW1
-                } else {
-                    error = "کد مادر نادرست است"
-                    buffer = ""
-                }
+            LockMode.MASTER -> if (digits == "137513") {
+                buffer = ""
+                error = ""
+                mode = LockMode.NEW1
+            } else {
+                error = "کد مادر نادرست است"
+                buffer = ""
             }
         }
     }
@@ -127,7 +120,10 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
     fun press(key: String) {
         when (key) {
             "del" -> if (buffer.isNotEmpty()) buffer = buffer.dropLast(1)
-            "clear" -> { buffer = ""; error = "" }
+            "clear" -> {
+                buffer = ""
+                error = ""
+            }
             else -> {
                 if (buffer.length >= 6) return
                 buffer += key
@@ -142,34 +138,44 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
     }
 
     LaunchedEffect(mode) {
-        if (mode == LockMode.UNLOCK && !bioTried && vm.prefs.biometricEnabled && Biometric.available(context)) {
+        if (mode == LockMode.UNLOCK && !bioTried && biometricReady) {
             bioTried = true
-            delay(400)
+            delay(450)
             biometric()
         }
     }
 
-    Surface(color = scheme.background, modifier = Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(scheme.primaryContainer.copy(alpha = 0.55f), scheme.background),
+                    0f,
+                    1400f
+                )
+            )
+    ) {
         Column(
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp),
+                .padding(horizontal = 22.dp)
+                .padding(bottom = 118.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.height(14.dp))
+            MyScanLogo(size = 76.dp)
             Spacer(Modifier.height(10.dp))
-            MyScanLogo(size = 88.dp)
-            Spacer(Modifier.height(12.dp))
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(18.dp))
             Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
             Text(subtitle, fontSize = 12.sp, color = scheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
 
-            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 repeat(6) { index ->
                     val filled = index < buffer.length
@@ -185,11 +191,11 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             }
 
             if (error.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(error, color = scheme.error, fontSize = 12.sp)
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(14.dp))
             val keys = listOf(
                 listOf("1", "2", "3"),
                 listOf("4", "5", "6"),
@@ -201,18 +207,19 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { key ->
                             Surface(
-                                modifier = Modifier.size(58.dp).pressClick { press(key) },
+                                modifier = Modifier.size(52.dp).pressClick { press(key) },
                                 shape = RoundedCornerShape(18.dp),
                                 color = scheme.surface,
-                                shadowElevation = 2.dp
+                                border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
+                                shadowElevation = 1.dp
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     when (key) {
                                         "del" -> Icon(Icons.Filled.Backspace, contentDescription = "حذف", tint = scheme.onSurfaceVariant)
-                                        "clear" -> Text("پاک", fontSize = 14.sp, color = scheme.onSurfaceVariant)
+                                        "clear" -> Text("پاک", fontSize = 13.sp, color = scheme.onSurfaceVariant)
                                         else -> Text(
                                             ir.scanfa.app.util.Calendars.fa(key.toInt()),
-                                            fontSize = 22.sp,
+                                            fontSize = 21.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = scheme.onSurface
                                         )
@@ -225,8 +232,37 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 Spacer(Modifier.height(8.dp))
             }
 
-            Spacer(Modifier.height(8.dp))
+        }
+
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 22.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             if (mode == LockMode.UNLOCK) {
+                if (biometricReady) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().pressClick { biometric() },
+                        shape = RoundedCornerShape(18.dp),
+                        color = scheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
+                        shadowElevation = 1.dp
+                    ) {
+                        Row(
+                            Modifier.padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = scheme.primary)
+                            Spacer(Modifier.width(8.dp))
+                            Text("ورود با اثر انگشت", fontSize = 13.sp, color = scheme.onSurface)
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
                 TextButton(onClick = {
                     buffer = ""
                     error = ""
@@ -240,33 +276,12 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                     Text("انصراف", color = scheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
-
-            if (mode == LockMode.UNLOCK && vm.prefs.biometricEnabled && Biometric.available(context)) {
-                Spacer(Modifier.height(6.dp))
-                Surface(
-                    modifier = Modifier.pressClick { biometric() },
-                    shape = RoundedCornerShape(18.dp),
-                    color = scheme.surface,
-                    shadowElevation = 2.dp
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = scheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("ورود با اثر انگشت", fontSize = 13.sp, color = scheme.onSurface)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppMark(size = 18.dp)
+                AppMark(size = 16.dp)
                 Spacer(Modifier.width(6.dp))
                 Text("Developed by Ali Dadman", fontSize = 11.sp, color = scheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(18.dp))
         }
     }
 }
