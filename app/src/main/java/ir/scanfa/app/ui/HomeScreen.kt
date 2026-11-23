@@ -175,7 +175,7 @@ private fun HomeTopBar(
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
         }
         Spacer(Modifier.width(10.dp))
-        AppMark(size = 48.dp, onClick = onLogoClick)
+        MyScanLogo(size = 52.dp, onClick = onLogoClick)
     }
 }
 

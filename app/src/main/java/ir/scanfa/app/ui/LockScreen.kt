@@ -160,7 +160,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(10.dp))
-            AppMark(size = 68.dp)
+            MyScanLogo(size = 88.dp)
             Spacer(Modifier.height(12.dp))
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
