@@ -77,7 +77,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
         LockMode.UNLOCK -> "رمز ۶ رقمی"
         LockMode.SETUP1, LockMode.NEW1 -> "مرحلهٔ ۱ از ۲"
         LockMode.SETUP2, LockMode.NEW2 -> "مرحلهٔ ۲ از ۲"
-        LockMode.MASTER -> "کد بازیابی پیش‌فرض: ۱۳۷۵۱۳"
+        LockMode.MASTER -> "کد مادر یا کد بازیابی ۵۶۳۵۷۰"
     }
 
     fun submit(digits: String) {
@@ -106,7 +106,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 firstPin = ""
                 mode = LockMode.SETUP1
             }
-            LockMode.MASTER -> if (digits == "137513") {
+            LockMode.MASTER -> if (vm.masterMatches(digits)) {
                 buffer = ""
                 error = ""
                 mode = LockMode.NEW1
@@ -162,20 +162,21 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 22.dp)
-                .padding(bottom = 118.dp),
+                .padding(bottom = 112.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(14.dp))
-            MyScanLogo(size = 76.dp)
+            Spacer(Modifier.height(8.dp))
+            MyScanLogo(size = 64.dp)
             Spacer(Modifier.height(10.dp))
             Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
             Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
             Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
             Text(subtitle, fontSize = 12.sp, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
 
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 repeat(6) { index ->
                     val filled = index < buffer.length
@@ -189,13 +190,14 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                     )
                 }
             }
+            }
 
             if (error.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Text(error, color = scheme.error, fontSize = 12.sp)
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
             val keys = listOf(
                 listOf("1", "2", "3"),
                 listOf("4", "5", "6"),
@@ -204,10 +206,10 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             )
             keys.forEach { row ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { key ->
                             Surface(
-                                modifier = Modifier.size(52.dp).pressClick { press(key) },
+                                modifier = Modifier.size(56.dp).pressClick { press(key) },
                                 shape = RoundedCornerShape(18.dp),
                                 color = scheme.surface,
                                 border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
@@ -277,10 +279,12 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AppMark(size = 16.dp)
-                Spacer(Modifier.width(6.dp))
-                Text("Developed by Ali Dadman", fontSize = 11.sp, color = scheme.onSurfaceVariant)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MyScanLogo(size = 20.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Developed by Ali Dadman", fontSize = 12.sp, color = scheme.onSurfaceVariant)
+                }
             }
         }
     }

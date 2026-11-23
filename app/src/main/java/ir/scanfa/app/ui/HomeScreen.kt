@@ -16,19 +16,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,14 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -69,7 +63,6 @@ import java.io.File
 fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val docs by vm.docs.collectAsState()
     val scope = rememberCoroutineScope()
-
     var petalTrigger by remember { mutableIntStateOf(0) }
     var lastLogoTap by remember { mutableLongStateOf(0L) }
 
@@ -79,15 +72,6 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 val id = vm.createDocument("", null)
                 val page = vm.addPageFromUri(id, uri)
                 if (page != null) nav.navigate("editor/$id/${page.id}") else nav.navigate("doc/$id")
-            }
-        }
-    }
-    val pdfPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val id = vm.createDocument("", null)
-                vm.importPdf(id, uri)
-                nav.navigate("doc/$id")
             }
         }
     }
@@ -102,10 +86,10 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         bottomBar = {
             HomeBottomBar(
                 onHome = {},
-                onCalendar = { nav.navigate("calendar") },
-                onScan = { startScan() },
                 onTools = { nav.navigate("tools") },
-                onSettings = { nav.navigate("settings") }
+                onScan = { startScan() },
+                onGallery = { imagePicker.launch("image/*") },
+                onAbout = { nav.navigate("about") }
             )
         }
     ) { padding ->
@@ -115,26 +99,17 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 item {
-                    HomeTopBar(
-                        onSettings = { nav.navigate("settings") },
-                        onLock = { vm.lockNow() },
+                    AppHeader(
                         onLogoClick = {
                             val now = System.currentTimeMillis()
                             if (now - lastLogoTap < 400L) nav.navigate("about") else petalTrigger += 1
                             lastLogoTap = now
-                        }
+                        },
+                        onSettings = { nav.navigate("settings") },
+                        onLock = { vm.toggleLock() }
                     )
                 }
                 item { DateCard(onCalendar = { nav.navigate("calendar") }) }
-                item {
-                    ShortcutRow(
-                        onCalendar = { nav.navigate("calendar") },
-                        onTools = { nav.navigate("tools") },
-                        onGallery = { imagePicker.launch("image/*") },
-                        onPdf = { pdfPicker.launch(arrayOf("application/pdf")) }
-                    )
-                }
-                item { ScanCard(onScan = { startScan() }) }
                 item { SectionHeader("سندهای اخیر", docs.size) }
                 if (docs.isEmpty()) {
                     item { EmptyDocs(onScan = { startScan() }) }
@@ -152,55 +127,6 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                     onDone = { petalTrigger = 0 }
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun HomeTopBar(
-    onSettings: () -> Unit,
-    onLock: () -> Unit,
-    onLogoClick: () -> Unit
-) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        MyScanLogo(size = 56.dp, onClick = onLogoClick)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
-            Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
-        }
-        Spacer(Modifier.width(12.dp))
-        SquareIconButton(Icons.Filled.Lock, "قفل", 48.dp, 24.dp, onLock)
-        Spacer(Modifier.width(8.dp))
-        SquareIconButton(Icons.Filled.Settings, "تنظیمات", 56.dp, 30.dp, onSettings)
-    }
-}
-
-@Composable
-private fun SquareIconButton(
-    icon: ImageVector,
-    label: String,
-    size: Dp,
-    iconSize: Dp,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.size(size).pressClick { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(iconSize)
-            )
         }
     }
 }
@@ -230,10 +156,7 @@ private fun DateCard(onCalendar: () -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 18.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
                         fontSize = 20.sp,
@@ -276,10 +199,7 @@ private fun DateCard(onCalendar: () -> Unit) {
                     }
                 }
 
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(Calendars.weekdayName(today), fontSize = 19.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
@@ -317,72 +237,6 @@ private fun DateCard(onCalendar: () -> Unit) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ShortcutRow(
-    onCalendar: () -> Unit,
-    onTools: () -> Unit,
-    onGallery: () -> Unit,
-    onPdf: () -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Pill("تقویم و روزها", Modifier.weight(1f), onCalendar)
-        Pill("افزونه‌ها", Modifier.weight(1f), onTools)
-        Pill("گالری", Modifier.weight(1f), onGallery)
-        Pill("PDF", Modifier.weight(1f), onPdf)
-    }
-}
-
-@Composable
-private fun Pill(text: String, modifier: Modifier, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        modifier = modifier.pressClick { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = scheme.surface
-    ) {
-        Text(
-            text,
-            modifier = Modifier.padding(vertical = 12.dp),
-            textAlign = TextAlign.Center,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = scheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun ScanCard(onScan: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).pressClick { onScan() },
-        shape = RoundedCornerShape(26.dp),
-        color = scheme.primary,
-        shadowElevation = 4.dp
-    ) {
-        Row(
-            Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier.size(44.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = Color.White)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("اسکن سند جدید", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text("تشخیص خودکار قاب و بهبود تصویر", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-            }
-            Text("›", color = Color.White, fontSize = 26.sp)
         }
     }
 }
@@ -454,7 +308,7 @@ private fun EmptyDocs(onScan: () -> Unit) {
             Text("هنوز سندی نساخته‌اید", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
             Text(
-                "با دکمهٔ اسکن شروع کنید یا عکس و PDF وارد کنید.",
+                "از دکمهٔ دوربین پایین شروع کنید یا عکس و PDF وارد کنید.",
                 fontSize = 12.sp,
                 color = scheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -476,22 +330,22 @@ private fun EmptyDocs(onScan: () -> Unit) {
 @Composable
 private fun HomeBottomBar(
     onHome: () -> Unit,
-    onCalendar: () -> Unit,
-    onScan: () -> Unit,
     onTools: () -> Unit,
-    onSettings: () -> Unit
+    onScan: () -> Unit,
+    onGallery: () -> Unit,
+    onAbout: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(color = scheme.surface, shadowElevation = 8.dp) {
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomItem(Icons.Filled.Home, "خانه", true, Modifier.weight(1f), onHome)
-            BottomItem(Icons.Filled.CalendarMonth, "تقویم", false, Modifier.weight(1f), onCalendar)
+            BottomItem(Icons.Filled.Widgets, "ابزارها", false, Modifier.weight(1f), onTools)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Surface(
-                    modifier = Modifier.size(54.dp).pressClick { onScan() },
+                    modifier = Modifier.size(56.dp).pressClick { onScan() },
                     shape = CircleShape,
                     color = scheme.primary,
                     shadowElevation = 6.dp
@@ -501,8 +355,8 @@ private fun HomeBottomBar(
                     }
                 }
             }
-            BottomItem(Icons.Filled.Widgets, "ابزارها", false, Modifier.weight(1f), onTools)
-            BottomItem(Icons.Filled.Settings, "تنظیمات", false, Modifier.weight(1f), onSettings)
+            BottomItem(Icons.Filled.PhotoLibrary, "گالری", false, Modifier.weight(1f), onGallery)
+            BottomItem(Icons.Filled.Info, "درباره", false, Modifier.weight(1f), onAbout)
         }
     }
 }

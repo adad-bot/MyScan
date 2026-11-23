@@ -64,6 +64,8 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var haptics by remember { mutableStateOf(vm.prefs.hapticsEnabled) }
     var theme by remember { mutableStateOf(vm.prefs.themeMode) }
     var lockEnabled by remember { mutableStateOf(vm.prefs.lockEnabled) }
+    var showPinDialog by remember { mutableStateOf(false) }
+    var showMasterDialog by remember { mutableStateOf(false) }
     var biometricEnabled by remember { mutableStateOf(vm.prefs.biometricEnabled) }
     val context = LocalContext.current
     var skin by remember { mutableStateOf(vm.prefs.skin) }
@@ -89,8 +91,17 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                     vm.setLockEnabled(it)
                     if (it && !vm.hasPin()) vm.requestPinSetup()
                 }
-                TextButton(onClick = { vm.requestPinSetup() }) {
-                    Text(if (vm.hasPin()) "تغییر رمز" else "تعیین رمز")
+                TextButton(onClick = { showPinDialog = true }) {
+                    Text(if (vm.hasPin()) "تغییر رمز ورود" else "تعیین رمز ورود")
+                }
+                TextButton(onClick = { showMasterDialog = true }) {
+                    Text(if (vm.hasMaster()) "تغییر کد مادر" else "تعیین کد مادر")
+                }
+                if (showPinDialog) {
+                    PinChangeDialog(vm) { showPinDialog = false }
+                }
+                if (showMasterDialog) {
+                    MasterChangeDialog(vm) { showMasterDialog = false }
                 }
                 if (Biometric.available(context)) {
                     SwitchRow(
@@ -161,16 +172,16 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
             }
 
             SettingCard("اندازهٔ متن و آیکن‌ها") {
-                val level = ((uiScale - 0.85f) / 0.05f + 1f).roundToInt().coerceIn(1, 10)
+                val level = ((uiScale - 0.88f) / 0.09f + 1f).roundToInt().coerceIn(1, 5)
                 Text(
-                    "سطح ${DateFa.fa(level)} از ۱۰  (${DateFa.fa((uiScale * 100).toInt())}٪)",
+                    "سطح ${DateFa.fa(level)} از ۵  (${DateFa.fa((uiScale * 100).toInt())}٪)",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Slider(
                     value = level.toFloat(),
-                    onValueChange = { vm.setUiLevel(it.roundToInt().coerceIn(1, 10)) },
-                    valueRange = 1f..10f,
-                    steps = 8
+                    onValueChange = { vm.setUiLevel(it.roundToInt().coerceIn(1, 5)) },
+                    valueRange = 1f..5f,
+                    steps = 3
                 )
                 Text(
                     "با تغییر این مقدار، متن‌ها و آیکن‌های کل برنامه بزرگ یا کوچک می‌شوند.",

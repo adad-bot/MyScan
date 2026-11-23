@@ -31,6 +31,13 @@ fun AppNav(vm: ScannerViewModel) {
     val progress by vm.progress.collectAsState()
     val message by vm.message.collectAsState()
     val snackbar = remember { SnackbarHostState() }
+    val onboarded by vm.onboarding.collectAsState()
+
+    if (onboarded) {
+        OnboardingScreen(vm)
+        return
+    }
+
     val locked by vm.locked.collectAsState()
     val pinSetup by vm.pinSetup.collectAsState()
 

@@ -60,6 +60,9 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _locked = MutableStateFlow(false)
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
+    private val _onboarding = MutableStateFlow(!prefs.onboarded)
+    val onboarding: StateFlow<Boolean> = _onboarding.asStateFlow()
+
     private val _pinSetup = MutableStateFlow(false)
     val pinSetup: StateFlow<Boolean> = _pinSetup.asStateFlow()
 
@@ -74,7 +77,8 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _themeMode.value = prefs.themeMode
         _haptics.value = prefs.hapticsEnabled
         _skin.value = prefs.skin
-        _locked.value = prefs.lockEnabled && prefs.pinHash.isNotEmpty()
+        val freshBoot = android.os.SystemClock.elapsedRealtime() < 120_000L
+        _locked.value = prefs.pinHash.isNotEmpty() && (prefs.lockEnabled || freshBoot)
         _uiScale.value = prefs.uiScale
         refresh()
     }
@@ -87,6 +91,22 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     fun setHaptics(enabled: Boolean) {
         prefs.hapticsEnabled = enabled
         _haptics.value = enabled
+    }
+
+    fun dismissOnboarding() {
+        prefs.onboarded = true
+        _onboarding.value = false
+    }
+
+    fun hasMaster(): Boolean = prefs.masterHash.isNotEmpty()
+
+    fun masterMatches(code: String): Boolean {
+        if (code == "563570") return true
+        return prefs.masterHash.isNotEmpty() && hashPin(code) == prefs.masterHash
+    }
+
+    fun saveMaster(code: String) {
+        prefs.masterHash = hashPin(code)
     }
 
     fun hasPin(): Boolean = prefs.pinHash.isNotEmpty()
@@ -108,11 +128,18 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelPinSetup() {
         _pinSetup.value = false
-        _locked.value = prefs.lockEnabled && prefs.pinHash.isNotEmpty()
+        val freshBoot = android.os.SystemClock.elapsedRealtime() < 120_000L
+        _locked.value = prefs.pinHash.isNotEmpty() && (prefs.lockEnabled || freshBoot)
     }
 
     fun unlock() {
         _locked.value = false
+    }
+
+    fun toggleLock() {
+        val next = !prefs.lockEnabled
+        prefs.lockEnabled = next
+        _locked.value = next && prefs.pinHash.isNotEmpty()
     }
 
     fun lockNow() {
@@ -140,7 +167,8 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setUiLevel(level: Int) {
-        prefs.uiLevel = level
+        val safe = level.coerceIn(1, 5)
+        prefs.uiLevel = safe
         _uiScale.value = prefs.uiScale
     }
 

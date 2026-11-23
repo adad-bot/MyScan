@@ -63,15 +63,25 @@ class Prefs(context: Context) {
         get() = sp.getString("pin_hash", "") ?: ""
         set(value) = sp.edit().putString("pin_hash", value).apply()
 
+    /** هش کد مادر (در اولین ورود به تنظیمات تعیین می‌شود) */
+    var masterHash: String
+        get() = sp.getString("master_hash", "") ?: ""
+        set(value) = sp.edit().putString("master_hash", value).apply()
+
+    /** پیام خوش‌آمد اولیه یک‌بار نمایش داده شود */
+    var onboarded: Boolean
+        get() = sp.getBoolean("onboarded", false)
+        set(value) = sp.edit().putBoolean("onboarded", value).apply()
+
     var biometricEnabled: Boolean
         get() = sp.getBoolean("biometric_enabled", true)
         set(value) = sp.edit().putBoolean("biometric_enabled", value).apply()
 
     /** سطح بزرگ‌نمایی ۱ تا ۱۰ (پله‌ای، نه پیوسته) */
     var uiLevel: Int
-        get() = sp.getInt("ui_level", 6).coerceIn(1, 10)
-        set(value) = sp.edit().putInt("ui_level", value.coerceIn(1, 10)).apply()
+        get() = sp.getInt("ui_level", 3).coerceIn(1, 5)
+        set(value) = sp.edit().putInt("ui_level", value.coerceIn(1, 5)).apply()
 
     val uiScale: Float
-        get() = 0.85f + (uiLevel - 1) * 0.05f
+        get() = 0.88f + (uiLevel - 1) * 0.09f
 }

@@ -206,7 +206,7 @@ private fun ToolCard(
         ) {
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(54.dp)
                     .background(if (enabled) scheme.primaryContainer else scheme.surfaceVariant, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -214,7 +214,7 @@ private fun ToolCard(
                     icon,
                     contentDescription = null,
                     tint = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(27.dp)
                 )
             }
             Spacer(Modifier.height(8.dp))

@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.util.Calendars
 import ir.scanfa.app.util.Occasions
@@ -59,7 +60,13 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
         viewMonth = Math.floorMod(total, 12) + 1
     }
 
-    Scaffold(topBar = { ScreenBar("تقویم", onBack = { nav.popBackStack() }) }) { padding ->
+    Scaffold(topBar = {
+        AppHeader(
+            onLogoClick = { nav.navigate("about") },
+            onSettings = { nav.navigate("settings") },
+            onLock = { vm.toggleLock() }
+        )
+    }) { padding ->
         Column(
             Modifier
                 .padding(padding)
@@ -69,17 +76,6 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                 .padding(16.dp)
         ) {
             SelectedDateCard(selected)
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (offset in -3..3) {
-                    DayChip(
-                        jdn = today + offset,
-                        selected = (today + offset) == selected,
-                        isToday = offset == 0,
-                        modifier = Modifier.weight(1f)
-                    ) { selected = today + offset }
-                }
-            }
             Spacer(Modifier.height(16.dp))
             Surface(
                 shape = RoundedCornerShape(24.dp),
@@ -94,7 +90,7 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "${Calendars.jalaliMonths[viewMonth - 1]} ${Calendars.fa(viewYear)}",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleLarge
                             )
                             Text(
                                 Calendars.hijriText(Calendars.j2d(viewYear, viewMonth, 15)),
@@ -126,20 +122,6 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                         today = today
                     ) { selected = it }
                     Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = {
-                            selected = today
-                            val tj = Calendars.d2j(today)
-                            viewYear = tj.jy
-                            viewMonth = tj.jm
-                        }) { Text("امروز") }
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            Calendars.jalaliShort(selected),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -212,39 +194,6 @@ private fun SelectedDateCard(jdn: Long) {
 }
 
 @Composable
-private fun DayChip(jdn: Long, selected: Boolean, isToday: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val j = Calendars.d2j(jdn)
-    Surface(
-        modifier = modifier.pressClick { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) scheme.primary else scheme.surface,
-        border = if (isToday && !selected) androidx.compose.foundation.BorderStroke(1.5.dp, scheme.primary) else null
-    ) {
-        Column(
-            Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                Calendars.weekdays[Calendars.weekdayIndex(jdn)].take(1),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (selected) scheme.onPrimary else scheme.onSurfaceVariant
-            )
-            Text(
-                Calendars.fa(j.jd),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (selected) scheme.onPrimary else scheme.onSurface
-            )
-            Text(
-                Calendars.fa(Calendars.d2g(jdn).third),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (selected) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
 private fun MonthGrid(viewYear: Int, viewMonth: Int, selected: Long, today: Long, onPick: (Long) -> Unit) {
     val first = Calendars.j2d(viewYear, viewMonth, 1)
     val offset = Calendars.weekdayIndex(first)
@@ -281,7 +230,7 @@ private fun DayCell(day: Int, selected: Boolean, today: Boolean, modifier: Modif
     Box(modifier.padding(2.dp), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(36.dp)
+                .size(44.dp)
                 .background(
                     if (selected) scheme.primary else if (today) scheme.primaryContainer else scheme.surface,
                     CircleShape
@@ -294,7 +243,7 @@ private fun DayCell(day: Int, selected: Boolean, today: Boolean, modifier: Modif
         ) {
             Text(
                 Calendars.fa(day),
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 16.sp,
                 color = when {
                     selected -> scheme.onPrimary
                     today -> scheme.onPrimaryContainer
