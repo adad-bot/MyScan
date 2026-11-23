@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -180,6 +182,23 @@ fun ExportScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                                 }
                                 TextButton(onClick = { saver.launch(r.files.first().name) }) {
                                     Text("ذخیره در پوشه")
+                                }
+                                Button(
+                                    onClick = {
+                                        val saved = ShareUtil.saveToDownloads(context, r.files)
+                                        vm.postMessage(
+                                            if (saved.isEmpty()) "ذخیره در دانلودها ناموفق بود."
+                                            else "در دانلودها ذخیره شد: " + saved.joinToString("، ")
+                                        )
+                                    },
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                ) {
+                                    Icon(Icons.Filled.Download, contentDescription = null)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("ذخیره در گوشی")
                                 }
                             }
                         }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -311,39 +312,67 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 }) { Text("پاک‌کردن فایل‌های خروجی") }
             }
 
+            Spacer(Modifier.height(10.dp))
             Card(
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                                    MaterialTheme.colorScheme.surface
+                                )
+                            )
+                        )
+                        .padding(vertical = 22.dp, horizontal = 18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    MyScanLogo(size = 66.dp)
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "MyScan",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "اسکن اسناد، فارسی و هوشمند",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
                     Box(
-                        Modifier.size(46.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
+                        Modifier
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(50))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
-                        Icon(Icons.Filled.DocumentScanner, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
                         Text(
-                            "MyScan",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            "گروه فناوری کرانه ماندگار",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Text(
-                            "علی دادمان",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                        Text(
-                            "نسخهٔ ۱.۰ — پردازش محلی و بدون حساب",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
                     }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "علی دادمان",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "نسخهٔ ۱.۰ — پردازش محلی، بدون حساب کاربری",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(14.dp))
         }
     }
 }

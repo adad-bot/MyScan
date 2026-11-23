@@ -53,6 +53,41 @@ object ShareUtil {
         false
     }
 
+    /** ذخیرهٔ فایل‌ها در پوشهٔ دانلودها؛ نام ذخیره‌شده‌ها را برمی‌گرداند. */
+    fun saveToDownloads(ctx: Context, files: List<File>): List<String> {
+        val saved = ArrayList<String>()
+        for (file in files) {
+            if (!file.exists()) continue
+            val mime = mimeFor(file.extension)
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    val values = android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, file.name)
+                        put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime)
+                        put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/MyScan")
+                    }
+                    val uri = ctx.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    if (uri != null) {
+                        ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                            file.inputStream().use { input -> input.copyTo(out) }
+                        }
+                        saved.add(file.name)
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    val dir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "MyScan")
+                    if (!dir.exists()) dir.mkdirs()
+                    val target = File(dir, file.name)
+                    file.copyTo(target, overwrite = true)
+                    saved.add(target.absolutePath)
+                }
+            } catch (t: Throwable) {
+                // فایل بعدی
+            }
+        }
+        return saved
+    }
+
     fun mimeFor(ext: String): String = when (ext.lowercase()) {
         "pdf" -> "application/pdf"
         "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
