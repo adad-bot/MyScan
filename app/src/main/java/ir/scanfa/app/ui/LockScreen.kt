@@ -208,7 +208,7 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { key ->
                             Surface(
-                                modifier = Modifier.size(66.dp).pressClick { press(key) },
+                                modifier = Modifier.size(66.dp).pressClick(requireDoubleTap = false) { press(key) },
                                 shape = RoundedCornerShape(18.dp),
                                 color = scheme.surface,
                                 border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),

@@ -66,6 +66,9 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _pinSetup = MutableStateFlow(false)
     val pinSetup: StateFlow<Boolean> = _pinSetup.asStateFlow()
 
+    private val _doubleTap = MutableStateFlow(true)
+    val doubleTap: StateFlow<Boolean> = _doubleTap.asStateFlow()
+
     private val _skin = MutableStateFlow("emerald")
     val skin: StateFlow<String> = _skin.asStateFlow()
 
@@ -77,6 +80,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         _themeMode.value = prefs.themeMode
         _haptics.value = prefs.hapticsEnabled
         _skin.value = prefs.skin
+        _doubleTap.value = prefs.doubleTap
         val freshBoot = android.os.SystemClock.elapsedRealtime() < 120_000L
         _locked.value = prefs.pinHash.isNotEmpty() && (prefs.lockEnabled || freshBoot)
         _uiScale.value = prefs.uiScale
@@ -169,6 +173,11 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         val bytes = digest.digest(("myscan:" + pin).toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    fun setDoubleTap(enabled: Boolean) {
+        prefs.doubleTap = enabled
+        _doubleTap.value = enabled
     }
 
     fun setSkin(id: String) {

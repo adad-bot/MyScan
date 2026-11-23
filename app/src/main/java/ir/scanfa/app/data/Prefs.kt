@@ -54,6 +54,11 @@ class Prefs(context: Context) {
         get() = sp.getString("skin", "emerald") ?: "emerald"
         set(value) = sp.edit().putString("skin", value).apply()
 
+    /** فعال‌سازی منوها با دو کلیک (پیش‌فرض روشن) */
+    var doubleTap: Boolean
+        get() = sp.getBoolean("double_tap", true)
+        set(value) = sp.edit().putBoolean("double_tap", value).apply()
+
     /** جلوه‌های فصلی تقویم (گل/برگ/برف/نور) */
     var seasonEffects: Boolean
         get() = sp.getBoolean("season_effects", true)

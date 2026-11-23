@@ -68,6 +68,7 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var showMasterDialog by remember { mutableStateOf(false) }
     var biometricEnabled by remember { mutableStateOf(vm.prefs.biometricEnabled) }
     var seasonEffects by remember { mutableStateOf(vm.prefs.seasonEffects) }
+    var doubleTap by remember { mutableStateOf(vm.prefs.doubleTap) }
     val context = LocalContext.current
     var skin by remember { mutableStateOf(vm.prefs.skin) }
     var uiScale by remember { mutableStateOf(vm.prefs.uiScale) }
@@ -82,6 +83,17 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            SettingCard("فعال‌سازی منوها") {
+                SwitchRow(
+                    "با دو کلیک فعال شود",
+                    "پیش‌فرض همهٔ منوها و آیکن‌ها با دو کلیک باز می‌شوند؛ اگر بخواهی تک‌کلیک کن.",
+                    doubleTap
+                ) {
+                    doubleTap = it
+                    vm.setDoubleTap(it)
+                }
+            }
+
             SettingCard("قفل و امنیت") {
                 SwitchRow(
                     "قفل با رمز ۶ رقمی",

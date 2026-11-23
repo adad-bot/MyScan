@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ir.scanfa.app.ui.AppNav
+import ir.scanfa.app.ui.LocalDoubleTapEnabled
 import ir.scanfa.app.ui.LocalHapticsEnabled
 import ir.scanfa.app.ui.ScannerTheme
 import ir.scanfa.app.vm.ScannerViewModel
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
             val vm: ScannerViewModel = viewModel()
             val themeMode by vm.themeMode.collectAsState()
             val haptics by vm.haptics.collectAsState()
+            val doubleTap by vm.doubleTap.collectAsState()
             val skin by vm.skin.collectAsState()
             val uiScale by vm.uiScale.collectAsState()
             val dark = when (themeMode) {
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(
                 LocalLayoutDirection provides LayoutDirection.Rtl,
                 LocalHapticsEnabled provides haptics,
+                LocalDoubleTapEnabled provides doubleTap,
                 LocalDensity provides scoped
             ) {
                 ScannerTheme(mode = themeMode, skinId = skin) {

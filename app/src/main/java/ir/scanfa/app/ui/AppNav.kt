@@ -106,6 +106,10 @@ fun AppNav(vm: ScannerViewModel) {
             ) { entry ->
                 ExportScreen(vm, nav, entry.arguments?.getString("docId").orEmpty())
             }
+            composable("viewer/{docId}") { entry ->
+                val id = entry.arguments?.getString("docId") ?: ""
+                ViewerScreen(vm, nav, id)
+            }
             composable("settings") { SettingsScreen(vm, nav) }
             composable("templates") { TemplatesScreen(vm, nav) }
             composable("tools") { ToolsScreen(vm, nav) }

@@ -148,6 +148,10 @@ fun DocScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "بیشتر")
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("نمایش تمام‌صفحه") }, onClick = {
+                                menuOpen = false
+                                nav.navigate("viewer/$docId")
+                            })
                             DropdownMenuItem(text = { Text("حذف سند") }, onClick = {
                                 menuOpen = false
                                 showDelete = true
