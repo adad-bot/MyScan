@@ -132,14 +132,14 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                 Modifier
                     .align(Alignment.TopStart)
                     .fillMaxHeight()
-                    .width(230.dp)
+                    .width(120.dp)
             ) {
                 if (petalTrigger > 0) {
                     PetalRain(
                         trigger = petalTrigger,
                         modifier = Modifier.fillMaxSize(),
-                        anchorX = 0.86f,
-                        anchorY = 0.07f,
+                        anchorX = 0.5f,
+                        anchorY = 0.10f,
                         onDone = { petalTrigger = 0 }
                     )
                 }

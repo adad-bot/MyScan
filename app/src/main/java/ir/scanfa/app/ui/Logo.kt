@@ -250,18 +250,18 @@ fun PetalRain(
 
     LaunchedEffect(trigger) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(3400, easing = LinearEasing))
+        progress.animateTo(1f, tween(7000, easing = LinearEasing))
         onDone()
     }
 
     val petals = remember(trigger) {
         val emojis = listOf("\uD83C\uDF39", "\uD83C\uDF38", "\uD83C\uDF3A", "\uD83C\uDF43", "\u2740")
-        List(26) { i ->
+        List(20) { i ->
             Petal(
                 emoji = emojis[i % emojis.size],
-                dx = (Math.random() * 70 - 35).toFloat(),
-                delay = (Math.random() * 0.15).toFloat(),
-                size = (10 + Math.random() * 8).toFloat(),
+                dx = (Math.random() * 40 - 20).toFloat(),
+                delay = (Math.random() * 0.18).toFloat(),
+                size = (9 + Math.random() * 6).toFloat(),
                 spin = (Math.random() * 2 - 1).toFloat()
             )
         }
