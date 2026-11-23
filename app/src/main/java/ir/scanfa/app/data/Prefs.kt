@@ -43,4 +43,9 @@ class Prefs(context: Context) {
     var autoCapture: Boolean
         get() = sp.getBoolean("auto_capture", true)
         set(value) = sp.edit().putBoolean("auto_capture", value).apply()
+
+    /** لرزش کوتاه هنگام لمس دکمه‌ها. */
+    var hapticsEnabled: Boolean
+        get() = sp.getBoolean("haptics_enabled", true)
+        set(value) = sp.edit().putBoolean("haptics_enabled", value).apply()
 }

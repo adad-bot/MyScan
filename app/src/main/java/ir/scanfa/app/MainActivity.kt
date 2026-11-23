@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ir.scanfa.app.ui.AppNav
+import ir.scanfa.app.ui.LocalHapticsEnabled
 import ir.scanfa.app.ui.ScannerTheme
 import ir.scanfa.app.vm.ScannerViewModel
 
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: ScannerViewModel = viewModel()
             val themeMode by vm.themeMode.collectAsState()
+            val haptics by vm.haptics.collectAsState()
             val dark = when (themeMode) {
                 "dark" -> true
                 "light" -> false
@@ -40,7 +42,10 @@ class MainActivity : ComponentActivity() {
                     isAppearanceLightNavigationBars = !dark
                 }
             }
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            CompositionLocalProvider(
+                LocalLayoutDirection provides LayoutDirection.Rtl,
+                LocalHapticsEnabled provides haptics
+            ) {
                 ScannerTheme(mode = themeMode) {
                     AppNav(vm)
                 }

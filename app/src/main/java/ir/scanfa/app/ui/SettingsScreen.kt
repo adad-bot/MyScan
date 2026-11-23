@@ -59,7 +59,7 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
     var cap by remember { mutableStateOf(vm.prefs.defaultCapKb) }
     var keepOriginal by remember { mutableStateOf(vm.prefs.keepOriginal) }
     var autoDetect by remember { mutableStateOf(vm.prefs.autoDetect) }
-    var autoCapture by remember { mutableStateOf(vm.prefs.autoCapture) }
+    var haptics by remember { mutableStateOf(vm.prefs.hapticsEnabled) }
     var theme by remember { mutableStateOf(vm.prefs.themeMode) }
 
     Scaffold(topBar = { ScreenBar("تنظیمات", onBack = { nav.popBackStack() }) }) { padding ->
@@ -105,15 +105,18 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 HintText("فایل زبان داخل اپ است و پردازش روی دستگاه انجام می‌شود.")
             }
 
-            SettingCard("دوربین و اسکن") {
+            SettingCard("بازخورد لمسی") {
                 SwitchRow(
-                    "ثبت خودکار",
-                    "وقتی قاب سند پایدار تشخیص داده شد، خودکار عکس گرفته می‌شود.",
-                    autoCapture
+                    "لرزش کوتاه دکمه‌ها",
+                    "با هر لمس، یک لرزش بسیار کوتاه حس می‌شود.",
+                    haptics
                 ) {
-                    autoCapture = it
-                    vm.prefs.autoCapture = it
+                    haptics = it
+                    vm.setHaptics(it)
                 }
+            }
+
+            SettingCard("دوربین و اسکن") {
                 SwitchRow(
                     "تشخیص خودکار قاب",
                     "گوشه‌های سند هنگام ورود عکس پیدا و اصلاح می‌شود.",
@@ -122,6 +125,11 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                     autoDetect = it
                     vm.prefs.autoDetect = it
                 }
+                Text(
+                    "ثبت خودکار را در همان صفحهٔ دوربین، بالای دکمهٔ عکس‌برداری تیک بزنید.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             SettingCard("کیفیت خروجی") {

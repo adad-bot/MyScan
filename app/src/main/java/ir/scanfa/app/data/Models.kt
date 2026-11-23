@@ -24,6 +24,7 @@ data class Page(
     val filter: String = FilterKind.ORIGINAL.id,
     val rotation: Int = 0,
     val crop: List<Float>? = null,
+    val erase: List<Float> = emptyList(),
     val ocrText: String? = null,
     val ocrEdited: String? = null,
     val slotId: String? = null,

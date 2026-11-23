@@ -94,6 +94,7 @@ fun AppNav(vm: ScannerViewModel) {
             }
             composable("settings") { SettingsScreen(vm, nav) }
             composable("templates") { TemplatesScreen(vm, nav) }
+            composable("tools") { ToolsScreen(vm, nav) }
         }
 
         SnackbarHost(

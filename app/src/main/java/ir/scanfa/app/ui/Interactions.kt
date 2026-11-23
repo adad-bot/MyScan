@@ -10,14 +10,18 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
+/** امکان خاموش‌کردن بازخورد لرزشی از تنظیمات. */
+val LocalHapticsEnabled = staticCompositionLocalOf { true }
+
 /**
  * کلیک «زنده»: فشردن دکمه آن را کمی جمع می‌کند، موج لمسی اجرا می‌شود
- * و بازخورد لرزشی کوتاه می‌دهد.
+ * و بازخورد لرزشی بسیار کوتاه می‌دهد.
  */
 @Composable
 fun Modifier.pressClick(
@@ -35,6 +39,7 @@ fun Modifier.pressClick(
         label = "pressScale"
     )
     val haptic = LocalHapticFeedback.current
+    val hapticsEnabled = LocalHapticsEnabled.current
 
     return this
         .graphicsLayer {
@@ -46,7 +51,9 @@ fun Modifier.pressClick(
             interactionSource = interaction,
             indication = LocalIndication.current,
             onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                if (hapticsEnabled) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                }
                 onClick()
             }
         )

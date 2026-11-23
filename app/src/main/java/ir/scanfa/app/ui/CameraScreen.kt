@@ -1,4 +1,4 @@
-package ir.scanfa.app.ui
+﻿package ir.scanfa.app.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -213,7 +216,7 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(results: ImageCapture.OutputFileResults) {
                         scope.launch {
-                            val page = vm.addPageFromFile(docId, file)
+                            val page = vm.addPageFromFile(docId, file, autoEnhance = true)
                             file.delete()
                             capturing = false
                             hits = 0
@@ -283,24 +286,12 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 }
                 Text("${DateFa.fa(shots)} صفحه", color = Color.White)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { flashOn = !flashOn }) {
-                    Icon(
-                        if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                        contentDescription = "فلش",
-                        tint = if (flashOn) Color(0xFFFBBF24) else Color.White
-                    )
-                }
-                IconButton(onClick = {
-                    autoCapture = !autoCapture
-                    vm.prefs.autoCapture = autoCapture
-                }) {
-                    Icon(
-                        Icons.Filled.AutoMode,
-                        contentDescription = "ثبت خودکار",
-                        tint = if (autoCapture) Color(0xFF5EEAD4) else Color.White.copy(alpha = 0.5f)
-                    )
-                }
+            IconButton(onClick = { flashOn = !flashOn }) {
+                Icon(
+                    if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                    contentDescription = "فلش",
+                    tint = if (flashOn) Color(0xFFFBBF24) else Color.White
+                )
             }
         }
 
@@ -311,6 +302,33 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 .padding(bottom = 40.dp, start = 20.dp, end = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Row(
+                    Modifier.pressClick {
+                        autoCapture = !autoCapture
+                        vm.prefs.autoCapture = autoCapture
+                    }.padding(start = 4.dp, end = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = autoCapture,
+                        onCheckedChange = {
+                            autoCapture = it
+                            vm.prefs.autoCapture = it
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFF5EEAD4),
+                            uncheckedColor = Color.White,
+                            checkmarkColor = Color(0xFF00322B)
+                        )
+                    )
+                    Text("ثبت خودکار", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
             StatusPill(quad != null, stable, autoCapture)
             Spacer(Modifier.height(18.dp))
             Row(
@@ -350,8 +368,7 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                     }
                 }
 
-                Text("ثبت خودکار", color = if (autoCapture) Color(0xFF5EEAD4) else Color.White.copy(alpha = 0.5f),
-                    style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(56.dp))
             }
         }
     }

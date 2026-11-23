@@ -38,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +101,9 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         nav.navigate("camera/$id")
     }
 
+    var showRose by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(scheme.background).navigationBarsPadding(),
         contentPadding = PaddingValues(bottom = 28.dp)
@@ -106,6 +112,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
             HomeHeader(
                 dark = dark,
                 onSettings = { nav.navigate("settings") },
+                onLogoClick = { showRose = true },
                 onScan = { startScan() }
             )
         }
@@ -113,7 +120,7 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
             QuickActions(
                 onGallery = { imagePicker.launch("image/*") },
                 onPdf = { pdfPicker.launch(arrayOf("application/pdf")) },
-                onTemplates = { nav.navigate("templates") }
+                onTools = { nav.navigate("tools") }
             )
         }
         item {
@@ -154,10 +161,20 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
             }
         }
     }
+
+        if (showRose) {
+            RoseOverlay(onDone = { showRose = false })
+        }
+    }
 }
 
 @Composable
-private fun HomeHeader(dark: Boolean, onSettings: () -> Unit, onScan: () -> Unit) {
+private fun HomeHeader(
+    dark: Boolean,
+    onSettings: () -> Unit,
+    onLogoClick: () -> Unit,
+    onScan: () -> Unit
+) {
     val start = if (dark) Color(0xFF10362F) else Color(0xFF0F766E)
     val end = if (dark) Color(0xFF0A1D19) else Color(0xFF0B4B43)
 
@@ -169,32 +186,20 @@ private fun HomeHeader(dark: Boolean, onSettings: () -> Unit, onScan: () -> Unit
     ) {
         Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(52.dp),
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.14f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Filled.DocumentScanner,
-                            contentDescription = null,
-                            tint = Color(0xFFEAFBF4),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
+                MyScanLogo(size = 64.dp, onClick = onLogoClick)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         "MyScan",
                         color = Color(0xFFF3FFFA),
-                        fontSize = 26.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         "علی دادمان",
-                        color = Color(0xFFCDE9DE),
-                        style = MaterialTheme.typography.bodySmall
+                        color = Color(0xFFD8F3E8),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
                 IconButton(onClick = onSettings) {
@@ -271,14 +276,14 @@ private fun HomeHeader(dark: Boolean, onSettings: () -> Unit, onScan: () -> Unit
 }
 
 @Composable
-private fun QuickActions(onGallery: () -> Unit, onPdf: () -> Unit, onTemplates: () -> Unit) {
+private fun QuickActions(onGallery: () -> Unit, onPdf: () -> Unit, onTools: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         QuickAction("گالری", "از عکس", Icons.Filled.PhotoLibrary, Modifier.weight(1f), onGallery)
         QuickAction("PDF", "چند صفحه", Icons.Filled.Description, Modifier.weight(1f), onPdf)
-        QuickAction("الگوها", "مدارک", Icons.Filled.Widgets, Modifier.weight(1f), onTemplates)
+        QuickAction("ابزارها", "افزونه‌ها", Icons.Filled.Widgets, Modifier.weight(1f), onTools)
     }
 }
 

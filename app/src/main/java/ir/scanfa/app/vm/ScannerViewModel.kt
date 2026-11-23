@@ -1,4 +1,4 @@
-package ir.scanfa.app.vm
+﻿package ir.scanfa.app.vm
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -14,6 +14,7 @@ import ir.scanfa.app.data.ScannerDoc
 import ir.scanfa.app.export.ExportPaths
 import ir.scanfa.app.export.Exporters
 import ir.scanfa.app.image.DocDetector
+import ir.scanfa.app.image.Erase
 import ir.scanfa.app.image.Filters
 import ir.scanfa.app.image.Img
 import ir.scanfa.app.image.PdfImport
@@ -21,6 +22,7 @@ import ir.scanfa.app.image.Quad
 import ir.scanfa.app.image.Warp
 import ir.scanfa.app.ocr.OcrEngine
 import ir.scanfa.app.util.DateFa
+import ir.scanfa.app.util.Naming
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,18 +48,27 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _haptics = MutableStateFlow(true)
+    val haptics: StateFlow<Boolean> = _haptics.asStateFlow()
+
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
     init {
         DocStore.init(app)
         _themeMode.value = prefs.themeMode
+        _haptics.value = prefs.hapticsEnabled
         refresh()
     }
 
     fun setThemeMode(mode: String) {
         prefs.themeMode = mode
         _themeMode.value = mode
+    }
+
+    fun setHaptics(enabled: Boolean) {
+        prefs.hapticsEnabled = enabled
+        _haptics.value = enabled
     }
 
     fun refresh() {
@@ -79,7 +90,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis()
         val doc = ScannerDoc(
             id = id,
-            title = title.trim().ifBlank { "سند ${DateFa.faText(DateFa.short(now))}" },
+            title = title.trim().ifBlank { Naming.subject() },
             createdAt = now,
             updatedAt = now,
             templateId = templateId,
@@ -101,36 +112,39 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             false
         }
         if (!copied) return@withContext null
-        val page = createPageFromFile(docId, tmp)
+        val page = createPageFromFile(docId, tmp, autoEnhance = false)
         tmp.delete()
         page
     }
 
-    suspend fun addPageFromFile(docId: String, file: File): Page? = withContext(Dispatchers.IO) {
-        createPageFromFile(docId, file)
-    }
-
-    suspend fun addPageFromBitmap(docId: String, bitmap: Bitmap): Page? = withContext(Dispatchers.IO) {
-        val target = DocStore.newImageFile(docId, "orig")
-        if (!Img.saveJpeg(bitmap, target, 92)) return@withContext null
-        val doc = DocStore.load(docId) ?: return@withContext null
-        val crop = if (prefs.autoDetect) {
-            DocDetector.detect(bitmap).toNormalized(bitmap.width, bitmap.height)
-        } else {
-            null
+    suspend fun addPageFromFile(docId: String, file: File, autoEnhance: Boolean = false): Page? =
+        withContext(Dispatchers.IO) {
+            createPageFromFile(docId, file, autoEnhance)
         }
-        val page = Page(
-            id = UUID.randomUUID().toString().take(10),
-            originalPath = target.absolutePath,
-            crop = crop
-        )
-        doc.pages.add(page)
-        DocStore.save(doc)
-        refresh()
-        page
-    }
 
-    private fun createPageFromFile(docId: String, source: File): Page? {
+    suspend fun addPageFromBitmap(docId: String, bitmap: Bitmap, autoEnhance: Boolean = false): Page? =
+        withContext(Dispatchers.IO) {
+            val target = DocStore.newImageFile(docId, "orig")
+            if (!Img.saveJpeg(bitmap, target, 92)) return@withContext null
+            val doc = DocStore.load(docId) ?: return@withContext null
+            val crop = if (prefs.autoDetect) {
+                DocDetector.detect(bitmap).toNormalized(bitmap.width, bitmap.height)
+            } else {
+                null
+            }
+            val page = Page(
+                id = UUID.randomUUID().toString().take(10),
+                originalPath = target.absolutePath,
+                filter = if (autoEnhance) FilterKind.ENHANCE.id else FilterKind.ORIGINAL.id,
+                crop = crop
+            )
+            doc.pages.add(page)
+            DocStore.save(doc)
+            refresh()
+            page
+        }
+
+    private fun createPageFromFile(docId: String, source: File, autoEnhance: Boolean): Page? {
         val doc = DocStore.load(docId) ?: return null
         val target = DocStore.newImageFile(docId, "orig")
         try {
@@ -152,6 +166,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         val page = Page(
             id = UUID.randomUUID().toString().take(10),
             originalPath = target.absolutePath,
+            filter = if (autoEnhance) FilterKind.ENHANCE.id else FilterKind.ORIGINAL.id,
             crop = crop
         )
         doc.pages.add(page)
@@ -172,7 +187,13 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** پیش‌نمایش کم‌حجم برای ویرایشگر بدون ذخیره روی دیسک. */
-    suspend fun previewPage(page: Page, crop: List<Float>?, filter: FilterKind, maxDim: Int = 900): Bitmap? =
+    suspend fun previewPage(
+        page: Page,
+        crop: List<Float>?,
+        filter: FilterKind,
+        erase: List<Float> = emptyList(),
+        maxDim: Int = 900
+    ): Bitmap? =
         withContext(Dispatchers.Default) {
             val src = Img.decode(File(page.originalPath), maxDim) ?: return@withContext null
             val quad = if (crop != null && crop.size == 8) {
@@ -185,11 +206,22 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
             bmp = Img.rotate(filtered, page.rotation)
+            if (erase.size >= 3) {
+                val erased = Erase.apply(bmp, erase)
+                if (erased !== bmp) bmp.recycle()
+                bmp = erased
+            }
             bmp
         }
 
     /** اعمال قاب و فیلتر با کیفیت کامل و ذخیرهٔ فایل پردازش‌شده. */
-    suspend fun saveProcessed(docId: String, pageId: String, crop: List<Float>?, filter: FilterKind): Page? =
+    suspend fun saveProcessed(
+        docId: String,
+        pageId: String,
+        crop: List<Float>?,
+        filter: FilterKind,
+        erase: List<Float> = emptyList()
+    ): Page? =
         withContext(Dispatchers.Default) {
             val doc = DocStore.load(docId) ?: return@withContext null
             val index = doc.pages.indexOfFirst { it.id == pageId }
@@ -207,6 +239,11 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
             bmp = Img.rotate(filtered, page.rotation)
+            if (erase.size >= 3) {
+                val erased = Erase.apply(bmp, erase)
+                if (erased !== bmp) bmp.recycle()
+                bmp = erased
+            }
             val outFile = DocStore.newImageFile(docId, "proc")
             val saved = Img.saveJpeg(bmp, outFile, prefs.jpegQuality)
             bmp.recycle()
@@ -217,7 +254,8 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             val updated = page.copy(
                 processedPath = outFile.absolutePath,
                 filter = filter.id,
-                crop = normalized
+                crop = normalized,
+                erase = erase
             )
             doc.pages[index] = updated
             DocStore.save(doc)

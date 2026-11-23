@@ -95,6 +95,9 @@ object DocStore {
         if (!p.ocrText.isNullOrEmpty()) put("ocrText", p.ocrText)
         if (!p.ocrEdited.isNullOrEmpty()) put("ocrEdited", p.ocrEdited)
         if (!p.slotId.isNullOrBlank()) put("slot", p.slotId)
+        if (p.erase.isNotEmpty()) {
+            put("erase", JSONArray().apply { p.erase.forEach { put(it.toDouble()) } })
+        }
         val crop = p.crop
         if (crop != null && crop.size == 8) {
             put("crop", JSONArray().apply { crop.forEach { put(it.toDouble()) } })
@@ -130,6 +133,11 @@ object DocStore {
             for (i in 0 until 8) list.add(cropArr.optDouble(i, 0.0).toFloat())
             crop = list
         }
+        val eraseArr = p.optJSONArray("erase")
+        val erase = ArrayList<Float>()
+        if (eraseArr != null) {
+            for (i in 0 until eraseArr.length()) erase.add(eraseArr.optDouble(i, 0.0).toFloat())
+        }
         return Page(
             id = p.optString("id"),
             originalPath = p.optString("original"),
@@ -137,6 +145,7 @@ object DocStore {
             filter = p.optString("filter", FilterKind.ORIGINAL.id),
             rotation = p.optInt("rotation", 0),
             crop = crop,
+            erase = erase,
             ocrText = p.stringOrNull("ocrText"),
             ocrEdited = p.stringOrNull("ocrEdited"),
             slotId = p.stringOrNull("slot"),

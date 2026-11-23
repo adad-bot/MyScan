@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +76,8 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
     var corners by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var frameMode by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf(FilterKind.ORIGINAL) }
+    var eraserOn by remember { mutableStateOf(false) }
+    var strokes by remember { mutableStateOf<List<Float>>(emptyList()) }
     var working by remember { mutableStateOf(false) }
 
     LaunchedEffect(pageId) {
@@ -90,6 +95,7 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
             else -> emptyList()
         }
         corners = initialCorners
+        strokes = loaded.erase
         preview = withContext(Dispatchers.IO) { Img.decode(File(loaded.filePath()), 1400) }
         frameMode = existing == null
         if (loaded.processedPath == null && initialCorners.size == 4) {
@@ -97,7 +103,8 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
                 loaded,
                 initialCorners.flatMap { listOf(it.x, it.y) },
                 filter,
-                1100
+                erase = loaded.erase,
+                maxDim = 1100
             )
             if (cropped != null) preview = cropped
         }
@@ -109,7 +116,7 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
         val p = page ?: return
         scope.launch {
             working = true
-            val bmp = vm.previewPage(p, cropList(), filter, 1000)
+            val bmp = vm.previewPage(p, cropList(), filter, strokes, 1000)
             if (bmp != null) preview = bmp
             working = false
         }
@@ -119,7 +126,7 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
         val p = page ?: return
         scope.launch {
             working = true
-            val updated = vm.saveProcessed(docId, pageId, cropList(), filter)
+            val updated = vm.saveProcessed(docId, pageId, cropList(), filter, strokes)
             working = false
             if (updated != null) {
                 vm.postMessage("صفحه ذخیره شد.")
@@ -150,6 +157,11 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
                     EditorCanvas(
                         bitmap = shown,
                         corners = if (frameMode) corners else emptyList(),
+                        strokes = strokes,
+                        eraser = eraserOn,
+                        onErase = { x, y ->
+                            if (strokes.size < 3000) strokes = strokes + listOf(x, y, 0.035f)
+                        },
                         onMove = { index, pos ->
                             val list = corners.toMutableList()
                             if (index in list.indices) {
@@ -186,6 +198,31 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
                         )
                     }
                 }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(
+                        selected = eraserOn,
+                        onClick = {
+                            eraserOn = !eraserOn
+                            if (eraserOn) frameMode = false
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.AutoFixHigh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        label = { Text("پاک کردن هوشمند") }
+                    )
+                    if (strokes.isNotEmpty()) {
+                        TextButton(onClick = { strokes = emptyList() }) { Text("بازگردانی") }
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { frameMode = !frameMode }, modifier = Modifier.weight(1f)) {
@@ -212,55 +249,93 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
 private fun EditorCanvas(
     bitmap: Bitmap,
     corners: List<Offset>,
-    onMove: (Int, Offset) -> Unit
+    strokes: List<Float>,
+    eraser: Boolean,
+    onMove: (Int, Offset) -> Unit,
+    onErase: (Float, Float) -> Unit
 ) {
     val latestCorners by rememberUpdatedState(corners)
     var dragIndex by remember { mutableIntStateOf(-1) }
     val threshold = with(LocalDensity.current) { 64.dp.toPx() }
-    val showFrame = corners.size == 4
+    val showFrame = corners.size == 4 && !eraser
 
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(bitmap, showFrame) {
-                if (!showFrame) return@pointerInput
-                detectDragGestures(
-                    onDragStart = { pos ->
-                        val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
-                        var best = -1
-                        var bestDistance = threshold
-                        latestCorners.forEachIndexed { index, c ->
-                            val p = Offset(rect.left + c.x * rect.width, rect.top + c.y * rect.height)
-                            val d = hypot(p.x - pos.x, p.y - pos.y)
-                            if (d < bestDistance) {
-                                bestDistance = d
-                                best = index
-                            }
-                        }
-                        dragIndex = best
-                    },
-                    onDragEnd = { dragIndex = -1 },
-                    onDragCancel = { dragIndex = -1 },
-                    onDrag = { change, _ ->
-                        if (dragIndex >= 0) {
-                            change.consume()
-                            val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
-                            if (rect.width > 0f && rect.height > 0f) {
-                                val nx = ((change.position.x - rect.left) / rect.width).coerceIn(0f, 1f)
-                                val ny = ((change.position.y - rect.top) / rect.height).coerceIn(0f, 1f)
-                                onMove(dragIndex, Offset(nx, ny))
-                            }
+    val gesture = if (eraser) {
+        Modifier.pointerInput(bitmap) {
+            detectDragGestures(
+                onDragStart = { pos ->
+                    val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
+                    if (rect.width > 1f && rect.height > 1f) {
+                        onErase(
+                            ((pos.x - rect.left) / rect.width).coerceIn(0f, 1f),
+                            ((pos.y - rect.top) / rect.height).coerceIn(0f, 1f)
+                        )
+                    }
+                },
+                onDrag = { change, _ ->
+                    change.consume()
+                    val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
+                    if (rect.width > 1f && rect.height > 1f) {
+                        onErase(
+                            ((change.position.x - rect.left) / rect.width).coerceIn(0f, 1f),
+                            ((change.position.y - rect.top) / rect.height).coerceIn(0f, 1f)
+                        )
+                    }
+                }
+            )
+        }
+    } else {
+        Modifier.pointerInput(bitmap, showFrame) {
+            if (!showFrame) return@pointerInput
+            detectDragGestures(
+                onDragStart = { pos ->
+                    val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
+                    var best = -1
+                    var bestDistance = threshold
+                    latestCorners.forEachIndexed { index, c ->
+                        val p = Offset(rect.left + c.x * rect.width, rect.top + c.y * rect.height)
+                        val d = hypot(p.x - pos.x, p.y - pos.y)
+                        if (d < bestDistance) {
+                            bestDistance = d
+                            best = index
                         }
                     }
-                )
-            }
-    ) {
+                    dragIndex = best
+                },
+                onDragEnd = { dragIndex = -1 },
+                onDragCancel = { dragIndex = -1 },
+                onDrag = { change, _ ->
+                    if (dragIndex >= 0) {
+                        change.consume()
+                        val rect = fitRect(bitmap, size.width.toFloat(), size.height.toFloat())
+                        if (rect.width > 0f && rect.height > 0f) {
+                            val nx = ((change.position.x - rect.left) / rect.width).coerceIn(0f, 1f)
+                            val ny = ((change.position.y - rect.top) / rect.height).coerceIn(0f, 1f)
+                            onMove(dragIndex, Offset(nx, ny))
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    Canvas(modifier = Modifier.fillMaxSize().then(gesture)) {
         val rect = fitRect(bitmap, size.width, size.height)
         drawImage(
             image = bitmap.asImageBitmap(),
             dstOffset = IntOffset(rect.left.toInt(), rect.top.toInt()),
             dstSize = IntSize(rect.width.toInt(), rect.height.toInt())
         )
+        if (strokes.size >= 3) {
+            var i = 0
+            while (i + 2 < strokes.size) {
+                drawCircle(
+                    color = Color.White,
+                    radius = (strokes[i + 2] * rect.width).coerceAtLeast(2f),
+                    center = Offset(rect.left + strokes[i] * rect.width, rect.top + strokes[i + 1] * rect.height)
+                )
+                i += 3
+            }
+        }
         if (showFrame) {
             val points = corners.map { c ->
                 Offset(rect.left + c.x * rect.width, rect.top + c.y * rect.height)
