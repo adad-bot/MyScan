@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -168,34 +169,94 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
 
 @Composable
 private fun SelectedDateCard(jdn: Long) {
+    val j = Calendars.d2j(jdn)
+    val h = Calendars.toHijri(jdn)
+    val g = Calendars.d2g(jdn)
+    val scheme = MaterialTheme.colorScheme
+
     Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth()
+        shape = RoundedCornerShape(28.dp),
+        color = scheme.surface,
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 3.dp
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Text(
-                Calendars.weekdayName(jdn),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
-            Text(
-                Calendars.jalaliText(jdn),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "میلادی: ${Calendars.gregorianText(jdn)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-            )
-            Text(
-                "قمری: ${Calendars.hijriText(jdn)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-            )
+        Column(
+            Modifier
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primaryContainer.copy(alpha = 0.65f), scheme.surface)
+                    )
+                )
+                .fillMaxWidth()
+                .padding(vertical = 20.dp, horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = scheme.primary.copy(alpha = 0.12f)
+            ) {
+                Text(
+                    Calendars.weekdayName(jdn),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.primary,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .background(scheme.surface, CircleShape)
+                        .border(1.5.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        Calendars.fa(j.jd),
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.primary
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(
+                        Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)] + " " + Calendars.fa(j.jy),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.onSurface
+                    )
+                    Text(
+                        Calendars.gregorianMonths[(g.second - 1).coerceIn(0, 11)] + " " + g.third + ", " + g.first,
+                        fontSize = 13.sp,
+                        color = scheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = scheme.surface.copy(alpha = 0.75f)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("قمری", fontSize = 11.sp, color = scheme.onSurfaceVariant)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)] + " " + Calendars.fa(h.hd) + "، " + Calendars.fa(h.hy),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.onSurface
+                    )
+                }
+            }
         }
     }
 }
