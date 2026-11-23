@@ -111,7 +111,13 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                         }
                     )
                 }
-                item { DateCard(onCalendar = { nav.navigate("calendar") }) }
+                item {
+                    DateHeroCard(
+                        jdn = remember { Calendars.todayJdn() },
+                        showSeason = vm.prefs.seasonEffects,
+                        onClick = { nav.navigate("calendar") }
+                    )
+                }
                 item { SectionHeader("سندهای اخیر", docs.size) }
                 if (docs.isEmpty()) {
                     item { EmptyDocs(onScan = { startScan() }) }
@@ -136,117 +142,6 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
                         anchorY = 0.07f,
                         onDone = { petalTrigger = 0 }
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DateCard(onCalendar: () -> Unit) {
-    val today = remember { Calendars.todayJdn() }
-    val j = remember(today) { Calendars.d2j(today) }
-    val h = remember(today) { Calendars.toHijri(today) }
-    val g = remember(today) { Calendars.d2g(today) }
-    val scheme = MaterialTheme.colorScheme
-    val events = remember(today) { Occasions.forJdn(today) }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp).pressClick { onCalendar() },
-        shape = RoundedCornerShape(28.dp),
-        color = scheme.surface,
-        shadowElevation = 3.dp
-    ) {
-        Column(
-            Modifier
-                .background(
-                    Brush.verticalGradient(
-                        listOf(scheme.primaryContainer.copy(alpha = 0.55f), scheme.surface)
-                    )
-                )
-                .padding(horizontal = 12.dp, vertical = 18.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "${Calendars.gregorianMonths[(g.second - 1).coerceIn(0, 11)]} ${g.first}",
-                        fontSize = 13.sp,
-                        color = scheme.onSurfaceVariant
-                    )
-                    Text(
-                        g.third.toString(),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.primary
-                    )
-                }
-
-                Box(
-                    Modifier
-                        .size(104.dp)
-                        .background(scheme.surface, CircleShape)
-                        .border(1.dp, scheme.outlineVariant, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🌞", modifier = Modifier.align(Alignment.TopStart).padding(9.dp), fontSize = 15.sp)
-                    Text("🌿", modifier = Modifier.align(Alignment.BottomStart).padding(9.dp), fontSize = 13.sp)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            Calendars.fa(j.jd),
-                            fontSize = 38.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.onSurface
-                        )
-                        Text(
-                            Calendars.fa(j.jy),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = scheme.primary
-                        )
-                    }
-                }
-
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(Calendars.weekdayName(today), fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                    Text(
-                        "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
-                        fontSize = 13.sp,
-                        color = scheme.onSurfaceVariant
-                    )
-                    Text(
-                        Calendars.fa(h.hd),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.primary
-                    )
-                }
-            }
-
-            if (events.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = scheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("🗓", fontSize = 14.sp)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "مناسبت‌ها: " + events.joinToString("، "),
-                            fontSize = 12.sp,
-                            color = scheme.onPrimaryContainer,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
             }
         }

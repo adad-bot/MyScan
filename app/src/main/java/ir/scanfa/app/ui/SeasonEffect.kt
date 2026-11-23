@@ -46,7 +46,7 @@ fun SeasonEffect(month: Int, modifier: Modifier = Modifier) {
                         color = if (i % 2 == 0) Color(0xFFFF9EC4).copy(alpha = 0.55f)
                         else Color(0xFFC4B5FD).copy(alpha = 0.5f),
                         topLeft = Offset(x, y),
-                        size = Size(7.dp.toPx(), 11.dp.toPx())
+                        size = Size(8.dp.toPx(), 12.dp.toPx())
                     )
                 }
             }
@@ -74,10 +74,10 @@ fun SeasonEffect(month: Int, modifier: Modifier = Modifier) {
                 val y = ((t + seed) % 1f) * h
                 rotate(t * 220f + i * 30f, pivot = Offset(x, y)) {
                     drawOval(
-                        color = if (i % 3 == 0) Color(0xFFE11D48).copy(alpha = 0.45f)
-                        else Color(0xFFF59E0B).copy(alpha = 0.45f),
+                        color = if (i % 3 == 0) Color(0xFFE11D48).copy(alpha = 0.8f)
+                        else Color(0xFFF59E0B).copy(alpha = 0.85f),
                         topLeft = Offset(x, y),
-                        size = Size(8.dp.toPx(), 5.dp.toPx())
+                        size = Size(11.dp.toPx(), 7.dp.toPx())
                     )
                 }
             }
