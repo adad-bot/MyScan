@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,14 +92,41 @@ fun CalendarScreen(vm: ScannerViewModel, nav: NavHostController) {
                             Icon(Icons.Filled.ChevronRight, contentDescription = "ماه قبل")
                         }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            val firstJdn = Calendars.j2d(viewYear, viewMonth, 1)
+                            val lastJdn = Calendars.j2d(
+                                viewYear,
+                                viewMonth,
+                                Calendars.jalaliMonthLength(viewYear, viewMonth)
+                            )
+                            val g1 = Calendars.d2g(firstJdn)
+                            val g2 = Calendars.d2g(lastJdn)
+                            val h1 = Calendars.toHijri(firstJdn)
+                            val h2 = Calendars.toHijri(lastJdn)
+                            val gRange = if (g1.second == g2.second) {
+                                Calendars.gregorianMonths[(g1.second - 1).coerceIn(0, 11)] + " " + g2.first
+                            } else {
+                                Calendars.gregorianShort[(g1.second - 1).coerceIn(0, 11)] + " – " +
+                                    Calendars.gregorianShort[(g2.second - 1).coerceIn(0, 11)] + " " + g2.first
+                            }
+                            val hRange = if (h1.hm == h2.hm) {
+                                Calendars.hijriMonths[(h1.hm - 1).coerceIn(0, 11)] + " " + Calendars.fa(h2.hy)
+                            } else {
+                                Calendars.hijriMonths[(h1.hm - 1).coerceIn(0, 11)] + " – " +
+                                    Calendars.hijriMonths[(h2.hm - 1).coerceIn(0, 11)] + " " + Calendars.fa(h2.hy)
+                            }
                             Text(
                                 "${Calendars.jalaliMonths[viewMonth - 1]} ${Calendars.fa(viewYear)}",
                                 fontSize = 23.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                Calendars.hijriText(Calendars.j2d(viewYear, viewMonth, 15)),
-                                style = MaterialTheme.typography.labelSmall,
+                                gRange,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                hRange,
+                                fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -174,14 +202,14 @@ private fun MonthGrid(viewYear: Int, viewMonth: Int, selected: Long, today: Long
 
     Column {
         for (row in 0 until rows) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                 for (col in 0 until 7) {
                     val index = row * 7 + col
                     val day = index - offset + 1
                     if (day in 1..length) {
                         val jdn = Calendars.j2d(viewYear, viewMonth, day)
                         DayCell(
-                            day = day,
+                            jdn = jdn,
                             selected = jdn == selected,
                             today = jdn == today,
                             modifier = Modifier.weight(1f)
@@ -196,31 +224,84 @@ private fun MonthGrid(viewYear: Int, viewMonth: Int, selected: Long, today: Long
 }
 
 @Composable
-private fun DayCell(day: Int, selected: Boolean, today: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun DayCell(jdn: Long, selected: Boolean, today: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Box(modifier.padding(2.dp), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .size(44.dp)
-                .background(
-                    if (selected) scheme.primary else if (today) scheme.primaryContainer else scheme.surface,
-                    CircleShape
-                )
-                .then(
-                    if (today && !selected) Modifier.border(1.dp, scheme.primary, CircleShape) else Modifier
-                )
-                .pressClick { onClick() },
-            contentAlignment = Alignment.Center
+    val j = Calendars.d2j(jdn)
+    val g = Calendars.d2g(jdn)
+    val h = Calendars.toHijri(jdn)
+    val previousHijri = Calendars.toHijri(jdn - 1)
+    val previousGregorian = Calendars.d2g(jdn - 1)
+    val isFriday = Calendars.weekdayIndex(jdn) == 6
+
+    Column(
+        modifier = modifier
+            .padding(2.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+            .background(if (selected) scheme.primary else scheme.surface)
+            .then(
+                if (today && !selected) Modifier.border(1.dp, scheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                else Modifier
+            )
+            .pressClick { onClick() }
+            .padding(vertical = 6.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            Calendars.fa(j.jd),
+            fontSize = 21.sp,
+            fontWeight = FontWeight.Bold,
+            color = when {
+                selected -> scheme.onPrimary
+                isFriday -> scheme.error
+                else -> scheme.onSurface
+            }
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                Calendars.fa(day),
-                fontSize = 18.sp,
-                color = when {
-                    selected -> scheme.onPrimary
-                    today -> scheme.onPrimaryContainer
-                    else -> scheme.onSurface
-                }
+                Calendars.fa(h.hd),
+                fontSize = 9.sp,
+                color = if (selected) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant
             )
+            Text(
+                "  ",
+                fontSize = 9.sp,
+                color = if (selected) scheme.onPrimary else scheme.onSurfaceVariant
+            )
+            Text(
+                g.third.toString(),
+                fontSize = 9.sp,
+                color = if (selected) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant
+            )
+        }
+
+        val gregChanged = g.second != previousGregorian.second
+        val hijriChanged = h.hm != previousHijri.hm
+        if (gregChanged || hijriChanged) {
+            Row(horizontalArrangement = Arrangement.Center) {
+                if (gregChanged) {
+                    Text(
+                        Calendars.gregorianShort[(g.second - 1).coerceIn(0, 11)],
+                        fontSize = 8.sp,
+                        color = if (selected) scheme.onPrimary.copy(alpha = 0.8f) else scheme.primary
+                    )
+                }
+                if (gregChanged && hijriChanged) {
+                    Text(" ", fontSize = 8.sp)
+                }
+                if (hijriChanged) {
+                    Text(
+                        Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)],
+                        fontSize = 8.sp,
+                        color = if (selected) scheme.onPrimary.copy(alpha = 0.8f) else scheme.primary,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }
+

@@ -34,6 +34,11 @@ object Calendars {
     )
 
     // مطابق jalaali-js: تقسیم و باقیمانده با کوتاه‌سازی به سمت صفر
+    val gregorianShort = arrayOf(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    )
+
     private fun div(a: Int, b: Int): Int = a / b
     private fun mod(a: Int, b: Int): Int = a % b
 
