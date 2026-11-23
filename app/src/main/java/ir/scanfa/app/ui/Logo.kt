@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -174,6 +175,40 @@ fun MyScanLogo(
 }
 
 /** جشن کوچک: گل رز سه ثانیه‌ای با یک ملودی کوتاه. */
+
+/** نشان مربعی‌گوشهٔ MyScan به سبک MyC (حرف M + گوشه‌های اسکن). */
+@Composable
+fun AppMark(size: Dp = 48.dp, onClick: (() -> Unit)? = null) {
+    val base = MaterialTheme.colorScheme.primary
+    val deep = androidx.compose.ui.graphics.lerp(base, Color.Black, 0.28f)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(size * 0.30f))
+            .background(Brush.verticalGradient(listOf(base, deep)))
+            .then(if (onClick != null) Modifier.pressClick { onClick() } else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val s = this.size.minDimension
+            val stroke = s * 0.045f
+            val pad = s * 0.20f
+            val len = s * 0.14f
+            val c = Color.White.copy(alpha = 0.9f)
+            drawLine(c, Offset(pad, pad + len), Offset(pad, pad), stroke, StrokeCap.Round)
+            drawLine(c, Offset(pad, pad), Offset(pad + len, pad), stroke, StrokeCap.Round)
+            drawLine(c, Offset(s - pad - len, pad), Offset(s - pad, pad), stroke, StrokeCap.Round)
+            drawLine(c, Offset(s - pad, pad), Offset(s - pad, pad + len), stroke, StrokeCap.Round)
+        }
+        Text(
+            "M",
+            color = Color.White,
+            fontSize = (size.value * 0.46f).sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 /**
  * بارش گل روی لوگو، به همان سبک MyC: ده‌ها گلبرگ ایموجی از مرکز لوگو
  * با پراکندگی افقی، تأخیر و اندازهٔ تصادفی به پایین می‌ریزند.

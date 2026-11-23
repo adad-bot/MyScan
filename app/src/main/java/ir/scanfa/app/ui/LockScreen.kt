@@ -10,25 +10,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,27 +36,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
-import androidx.compose.ui.platform.LocalContext
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.delay
 
 private enum class LockMode { UNLOCK, SETUP1, SETUP2, MASTER, NEW1, NEW2 }
 
 /**
- * صفحهٔ قفل به سبک MyC: رمز ۶ رقمی، کد مادر برای بازیابی و اثر انگشت.
- * کد مادر پیش‌فرض: ۱۳۷۵۱۳
+ * صفحهٔ قفل با ساختار MyC (دایره‌های رمز، کیبورد مربعی، فراموشی رمز و اثر انگشت)
+ * اما با رنگ و لوگوی MyScan. کد مادر پیش‌فرض: ۱۳۷۵۱۳
  */
 @Composable
 fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
+    val scheme = MaterialTheme.colorScheme
+
     var mode by remember { mutableStateOf(if (initialSetup || !vm.hasPin()) LockMode.SETUP1 else LockMode.UNLOCK) }
     var buffer by remember { mutableStateOf("") }
     var firstPin by remember { mutableStateOf("") }
@@ -72,22 +75,18 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
         LockMode.NEW2 -> "رمز جدید را تکرار کن"
     }
     val subtitle = when (mode) {
-        LockMode.UNLOCK -> "برای باز کردن MyScan"
+        LockMode.UNLOCK -> "رمز ۶ رقمی"
         LockMode.SETUP1, LockMode.NEW1 -> "مرحلهٔ ۱ از ۲"
         LockMode.SETUP2, LockMode.NEW2 -> "مرحلهٔ ۲ از ۲"
         LockMode.MASTER -> "کد بازیابی پیش‌فرض: ۱۳۷۵۱۳"
-    }
-
-    fun finishSuccess() {
-        buffer = ""
-        error = ""
     }
 
     fun submit(digits: String) {
         when (mode) {
             LockMode.UNLOCK -> {
                 if (vm.pinMatches(digits)) {
-                    finishSuccess()
+                    buffer = ""
+                    error = ""
                     vm.unlock()
                 } else {
                     error = "رمز اشتباه است"
@@ -102,7 +101,8 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             }
             LockMode.SETUP2, LockMode.NEW2 -> {
                 if (digits == firstPin) {
-                    finishSuccess()
+                    buffer = ""
+                    error = ""
                     vm.savePin(digits)
                 } else {
                     error = "رمزها یکسان نیستند؛ دوباره تلاش کن"
@@ -126,26 +126,19 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
 
     fun press(key: String) {
         when (key) {
-            "del" -> { if (buffer.isNotEmpty()) buffer = buffer.dropLast(1) }
+            "del" -> if (buffer.isNotEmpty()) buffer = buffer.dropLast(1)
             "clear" -> { buffer = ""; error = "" }
             else -> {
                 if (buffer.length >= 6) return
                 buffer += key
-                if (buffer.length == 6) {
-                    val digits = buffer
-                    submit(digits)
-                }
+                if (buffer.length == 6) submit(buffer)
             }
         }
     }
 
     fun biometric() {
         if (activity == null) return
-        Biometric.prompt(
-            activity,
-            onSuccess = { vm.unlock() },
-            onError = { error = it }
-        )
+        Biometric.prompt(activity, onSuccess = { vm.unlock() }, onError = { error = it })
     }
 
     LaunchedEffect(mode) {
@@ -156,47 +149,47 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
         }
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0F3B33), Color(0xFF08120F))))
-    ) {
+    Surface(color = scheme.background, modifier = Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 28.dp),
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(44.dp))
-            MyScanLogo(size = 86.dp)
+            Spacer(Modifier.height(10.dp))
+            AppMark(size = 68.dp)
+            Spacer(Modifier.height(12.dp))
+            Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
+            Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
             Spacer(Modifier.height(14.dp))
-            Text("MyScan", color = Color(0xFFF3FFFA), fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            Text("علی دادمان", color = Color(0xFFB9E6D6), fontSize = 14.sp)
-            Spacer(Modifier.height(26.dp))
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(6.dp))
-            Text(subtitle, color = Color(0xFF9FC9BC), fontSize = 13.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(22.dp))
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(4.dp))
+            Text(subtitle, fontSize = 12.sp, color = scheme.onSurfaceVariant)
 
+            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 repeat(6) { index ->
                     val filled = index < buffer.length
                     Box(
                         Modifier
-                            .size(16.dp)
-                            .background(
-                                if (filled) Color(0xFF5EEAD4) else Color.White.copy(alpha = 0.12f),
-                                CircleShape
+                            .size(14.dp)
+                            .then(
+                                if (filled) Modifier.background(scheme.primary, CircleShape)
+                                else Modifier.border(1.5.dp, scheme.outline, CircleShape)
                             )
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                     )
                 }
             }
 
             if (error.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                Text(error, color = Color(0xFFFCA5A5), fontSize = 13.sp)
+                Spacer(Modifier.height(10.dp))
+                Text(error, color = scheme.error, fontSize = 12.sp)
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(10.dp))
             val keys = listOf(
                 listOf("1", "2", "3"),
                 listOf("4", "5", "6"),
@@ -205,66 +198,75 @@ fun LockScreen(vm: ScannerViewModel, initialSetup: Boolean) {
             )
             keys.forEach { row ->
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { key ->
-                        val label = when (key) {
-                            "clear" -> "پاک"
-                            "del" -> ""
-                            else -> key
-                        }
-                        Box(
-                            Modifier
-                                .size(64.dp)
-                                .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                                .pressClick { press(key) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (key == "del") {
-                                Icon(Icons.Filled.Backspace, contentDescription = "حذف", tint = Color.White)
-                            } else {
-                                Text(
-                                    label,
-                                    color = Color.White,
-                                    fontSize = if (key == "clear") 15.sp else 24.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { key ->
+                            Surface(
+                                modifier = Modifier.size(58.dp).pressClick { press(key) },
+                                shape = RoundedCornerShape(18.dp),
+                                color = scheme.surface,
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    when (key) {
+                                        "del" -> Icon(Icons.Filled.Backspace, contentDescription = "حذف", tint = scheme.onSurfaceVariant)
+                                        "clear" -> Text("پاک", fontSize = 14.sp, color = scheme.onSurfaceVariant)
+                                        else -> Text(
+                                            ir.scanfa.app.util.Calendars.fa(key.toInt()),
+                                            fontSize = 22.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = scheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
             }
 
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (mode == LockMode.UNLOCK && vm.prefs.biometricEnabled && Biometric.available(context)) {
-                    Box(
-                        Modifier
-                            .size(54.dp)
-                            .background(Color.White.copy(alpha = 0.10f), CircleShape)
-                            .pressClick { biometric() },
-                        contentAlignment = Alignment.Center
+            if (mode == LockMode.UNLOCK) {
+                TextButton(onClick = {
+                    buffer = ""
+                    error = ""
+                    mode = LockMode.MASTER
+                }) {
+                    Text("فراموشی رمز", color = scheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+            if (mode == LockMode.SETUP1 && vm.pinSetup.value) {
+                TextButton(onClick = { vm.cancelPinSetup() }) {
+                    Text("انصراف", color = scheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+
+            if (mode == LockMode.UNLOCK && vm.prefs.biometricEnabled && Biometric.available(context)) {
+                Spacer(Modifier.height(6.dp))
+                Surface(
+                    modifier = Modifier.pressClick { biometric() },
+                    shape = RoundedCornerShape(18.dp),
+                    color = scheme.surface,
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Fingerprint, contentDescription = "اثر انگشت", tint = Color(0xFF5EEAD4))
-                    }
-                    Spacer(Modifier.width(16.dp))
-                }
-                if (mode == LockMode.UNLOCK) {
-                    TextButton(onClick = {
-                        buffer = ""
-                        error = ""
-                        mode = LockMode.MASTER
-                    }) {
-                        Text("رمز را فراموش کردی؟", color = Color(0xFFB9E6D6))
-                    }
-                }
-                if (mode == LockMode.SETUP1 && vm.pinSetup.value) {
-                    TextButton(onClick = { vm.cancelPinSetup() }) {
-                        Text("انصراف", color = Color(0xFFB9E6D6))
+                        Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = scheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("ورود با اثر انگشت", fontSize = 13.sp, color = scheme.onSurface)
                     }
                 }
             }
+
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppMark(size = 18.dp)
+                Spacer(Modifier.width(6.dp))
+                Text("Developed by Ali Dadman", fontSize = 11.sp, color = scheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(18.dp))
         }
     }
 }

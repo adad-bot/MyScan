@@ -23,45 +23,43 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.data.ScannerDoc
 import ir.scanfa.app.util.Calendars
 import ir.scanfa.app.util.DateFa
+import ir.scanfa.app.util.Occasions
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -70,33 +68,24 @@ import java.io.File
 fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
     val docs by vm.docs.collectAsState()
     val scope = rememberCoroutineScope()
-    val scheme = MaterialTheme.colorScheme
-    val dark = scheme.background.luminance() < 0.5f
+
+    var petalTrigger by remember { mutableIntStateOf(0) }
+    var lastLogoTap by remember { mutableLongStateOf(0L) }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             scope.launch {
                 val id = vm.createDocument("", null)
                 val page = vm.addPageFromUri(id, uri)
-                if (page != null) {
-                    nav.navigate("editor/$id/${page.id}")
-                } else {
-                    vm.postMessage("ورود تصویر ناموفق بود.")
-                    nav.navigate("doc/$id")
-                }
+                if (page != null) nav.navigate("editor/$id/${page.id}") else nav.navigate("doc/$id")
             }
         }
     }
-
     val pdfPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 val id = vm.createDocument("", null)
-                val count = vm.importPdf(id, uri)
-                vm.postMessage(
-                    if (count > 0) "${DateFa.fa(count)} صفحه از PDF وارد شد."
-                    else "PDF قابل خواندن نبود."
-                )
+                vm.importPdf(id, uri)
                 nav.navigate("doc/$id")
             }
         }
@@ -107,238 +96,336 @@ fun HomeScreen(vm: ScannerViewModel, nav: NavHostController) {
         nav.navigate("camera/$id")
     }
 
-    var petalTrigger by remember { mutableIntStateOf(0) }
-    var lastLogoTap by remember { mutableLongStateOf(0L) }
-
-    Box(Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(scheme.background).navigationBarsPadding(),
-        contentPadding = PaddingValues(bottom = 28.dp)
-    ) {
-        item {
-            HomeHeader(
-                dark = dark,
-                onSettings = { nav.navigate("settings") },
-                onLogoClick = {
-                    val now = System.currentTimeMillis()
-                    if (now - lastLogoTap < 400L) {
-                        nav.navigate("about")
-                    } else {
-                        petalTrigger += 1
-                    }
-                    lastLogoTap = now
-                },
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            HomeBottomBar(
+                onHome = {},
+                onCalendar = { nav.navigate("calendar") },
                 onScan = { startScan() },
-                petalTrigger = petalTrigger,
-                onPetalDone = { petalTrigger = 0 }
+                onTools = { nav.navigate("tools") },
+                onSettings = { nav.navigate("settings") }
             )
         }
-        item { DateOrbit(onClick = { nav.navigate("calendar") }) }
-        item {
-            QuickActions(
-                onGallery = { imagePicker.launch("image/*") },
-                onPdf = { pdfPicker.launch(arrayOf("application/pdf")) },
-                onTools = { nav.navigate("tools") }
-            )
-        }
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+    ) { padding ->
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                Text("سندهای اخیر", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(8.dp))
-                if (docs.isNotEmpty()) {
-                    Surface(
-                        color = scheme.primaryContainer,
-                        shape = CircleShape
-                    ) {
-                        Text(
-                            DateFa.fa(docs.size),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                if (docs.isNotEmpty()) {
-                    Text(
-                        "آخرین فعالیت",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant
+                item {
+                    HomeTopBar(
+                        onSettings = { nav.navigate("settings") },
+                        onLock = { vm.lockNow() },
+                        onLogoClick = {
+                            val now = System.currentTimeMillis()
+                            if (now - lastLogoTap < 400L) nav.navigate("about") else petalTrigger += 1
+                            lastLogoTap = now
+                        }
                     )
                 }
+                item { DateCard(onCalendar = { nav.navigate("calendar") }) }
+                item {
+                    ShortcutRow(
+                        onCalendar = { nav.navigate("calendar") },
+                        onTools = { nav.navigate("tools") },
+                        onGallery = { imagePicker.launch("image/*") },
+                        onPdf = { pdfPicker.launch(arrayOf("application/pdf")) }
+                    )
+                }
+                item { ScanCard(onScan = { startScan() }) }
+                item { SectionHeader("سندهای اخیر", docs.size) }
+                if (docs.isEmpty()) {
+                    item { EmptyDocs(onScan = { startScan() }) }
+                } else {
+                    items(docs, key = { it.id }) { doc ->
+                        DocCard(doc) { nav.navigate("doc/${doc.id}") }
+                    }
+                }
             }
-        }
-        if (docs.isEmpty()) {
-            item { EmptyState(onScan = { startScan() }) }
-        } else {
-            items(docs, key = { it.id }) { doc ->
-                DocCard(doc) { nav.navigate("doc/${doc.id}") }
-            }
-        }
-    }
 
-        if (petalTrigger > 0) {
-            PetalRain(
-                trigger = petalTrigger,
-                modifier = Modifier.fillMaxSize().zIndex(2f),
-                onDone = { petalTrigger = 0 }
-            )
+            if (petalTrigger > 0) {
+                PetalRain(
+                    trigger = petalTrigger,
+                    modifier = Modifier.fillMaxSize(),
+                    onDone = { petalTrigger = 0 }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun HomeHeader(
-    dark: Boolean,
+private fun HomeTopBar(
     onSettings: () -> Unit,
-    onLogoClick: () -> Unit,
-    onScan: () -> Unit,
-    petalTrigger: Int,
-    onPetalDone: () -> Unit
+    onLock: () -> Unit,
+    onLogoClick: () -> Unit
 ) {
-    val start = if (dark) Color(0xFF10362F) else Color(0xFF0F766E)
-    val end = if (dark) Color(0xFF0A1D19) else Color(0xFF0B4B43)
-
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
-            .background(Brush.verticalGradient(listOf(start, end)))
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp)) {
+        SquareIconButton(Icons.Filled.Settings, "تنظیمات", onSettings)
+        Spacer(Modifier.width(8.dp))
+        SquareIconButton(Icons.Filled.Lock, "قفل", onLock)
+        Spacer(Modifier.weight(1f))
+        Column(horizontalAlignment = Alignment.End) {
+            Text("MyScan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = scheme.onSurface)
+            Text("علی دادمان", fontSize = 14.sp, color = scheme.primary)
+        }
+        Spacer(Modifier.width(10.dp))
+        AppMark(size = 48.dp, onClick = onLogoClick)
+    }
+}
+
+@Composable
+private fun SquareIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.size(48.dp).pressClick { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun DateCard(onCalendar: () -> Unit) {
+    val today = remember { Calendars.todayJdn() }
+    val j = remember(today) { Calendars.d2j(today) }
+    val h = remember(today) { Calendars.toHijri(today) }
+    val g = remember(today) { Calendars.d2g(today) }
+    val scheme = MaterialTheme.colorScheme
+    val events = remember(today) { Occasions.forJdn(today) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp).pressClick { onCalendar() },
+        shape = RoundedCornerShape(28.dp),
+        color = scheme.surface,
+        shadowElevation = 3.dp
+    ) {
+        Column(
+            Modifier
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primaryContainer.copy(alpha = 0.55f), scheme.surface)
+                    )
+                )
+                .padding(horizontal = 14.dp, vertical = 16.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MyScanLogo(size = 64.dp, onClick = onLogoClick)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Text(
-                        "MyScan",
-                        color = Color(0xFFF3FFFA),
-                        fontSize = 28.sp,
+                        Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "علی دادمان",
-                        color = Color(0xFFD8F3E8),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold
+                        "${Calendars.gregorianMonths[(g.second - 1).coerceIn(0, 11)]} ${g.first}",
+                        fontSize = 13.sp,
+                        color = scheme.onSurfaceVariant
+                    )
+                    Text(
+                        g.third.toString(),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.primary
                     )
                 }
-                IconButton(onClick = onSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = "تنظیمات", tint = Color(0xFFEAFBF4))
-                }
-            }
 
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "اسکن تمیز و سریع اسناد",
-                color = Color(0xFFEAFBF4),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = Color(0xFF9BE8C8),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "قاب سند خودکار تشخیص داده می‌شود",
-                    color = Color(0xFFB9E6D6),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Spacer(Modifier.height(18.dp))
-            val cardColor = if (dark) MaterialTheme.colorScheme.surface else Color.White
-            val titleColor = if (dark) MaterialTheme.colorScheme.onSurface else Color(0xFF0B3B34)
-            val subColor = if (dark) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF4B6A62)
-            val iconBg = if (dark) MaterialTheme.colorScheme.primaryContainer else Color(0xFF0F766E)
-            val iconTint = if (dark) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
-            val chevronColor = if (dark) MaterialTheme.colorScheme.primary else Color(0xFF0F766E)
-            Surface(
-                color = cardColor,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth().pressClick { onScan() }
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    Modifier
+                        .size(100.dp)
+                        .background(scheme.surface, CircleShape)
+                        .border(1.dp, scheme.outlineVariant, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(iconBg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = iconTint)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
+                    Text("🌞", modifier = Modifier.align(Alignment.TopEnd).padding(10.dp), fontSize = 16.sp)
+                    Text("🌿", modifier = Modifier.align(Alignment.BottomStart).padding(10.dp), fontSize = 14.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "اسکن سند جدید",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = titleColor
+                            Calendars.fa(j.jd),
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.onSurface
                         )
                         Text(
-                            "دوربین را باز کن، بقیه‌اش با MyScan",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = subColor
+                            Calendars.fa(j.jy),
+                            fontSize = 13.sp,
+                            color = scheme.onSurfaceVariant
                         )
                     }
-                    Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = chevronColor)
+                }
+
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                    Text(Calendars.weekdayName(today), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
+                        fontSize = 13.sp,
+                        color = scheme.onSurfaceVariant
+                    )
+                    Text(
+                        Calendars.fa(h.hd),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.primary
+                    )
                 }
             }
-            Spacer(Modifier.height(18.dp))
+
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (offset in -3..3) {
+                    val jdn = today + offset
+                    MiniDay(jdn, (today + offset) == today, Modifier.weight(1f))
+                }
+            }
+
+            if (events.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = scheme.primaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🗓", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "مناسبت‌ها: " + events.joinToString("، "),
+                            fontSize = 12.sp,
+                            color = scheme.onPrimaryContainer,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         }
-
     }
 }
 
 @Composable
-private fun QuickActions(onGallery: () -> Unit, onPdf: () -> Unit, onTools: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+private fun MiniDay(jdn: Long, isToday: Boolean, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val j = Calendars.d2j(jdn)
+    val g = Calendars.d2g(jdn)
+    val h = Calendars.toHijri(jdn)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (isToday) scheme.surface else scheme.surface.copy(alpha = 0.55f))
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        QuickAction("گالری", "از عکس", Icons.Filled.PhotoLibrary, Modifier.weight(1f), onGallery)
-        QuickAction("PDF", "چند صفحه", Icons.Filled.Description, Modifier.weight(1f), onPdf)
-        QuickAction("ابزارها", "افزونه‌ها", Icons.Filled.Widgets, Modifier.weight(1f), onTools)
+        Text(
+            Calendars.weekdays[Calendars.weekdayIndex(jdn)].take(4),
+            fontSize = 9.sp,
+            color = scheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Text(
+            Calendars.fa(j.jd),
+            fontSize = 15.sp,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+            color = if (isToday) scheme.primary else scheme.onSurface
+        )
+        Text("${g.third}", fontSize = 8.sp, color = scheme.onSurfaceVariant)
+        Text("${Calendars.fa(h.hd)}", fontSize = 8.sp, color = scheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun QuickAction(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    modifier: Modifier,
-    onClick: () -> Unit
+private fun ShortcutRow(
+    onCalendar: () -> Unit,
+    onTools: () -> Unit,
+    onGallery: () -> Unit,
+    onPdf: () -> Unit
 ) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Pill("تقویم و روزها", Modifier.weight(1f), onCalendar)
+        Pill("افزونه‌ها", Modifier.weight(1f), onTools)
+        Pill("گالری", Modifier.weight(1f), onGallery)
+        Pill("PDF", Modifier.weight(1f), onPdf)
+    }
+}
+
+@Composable
+private fun Pill(text: String, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.pressClick { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        color = scheme.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 1.dp
+        shape = RoundedCornerShape(16.dp),
+        color = scheme.surface
     ) {
-        Column(Modifier.padding(vertical = 14.dp, horizontal = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text,
+            modifier = Modifier.padding(vertical = 12.dp),
+            textAlign = TextAlign.Center,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun ScanCard(onScan: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).pressClick { onScan() },
+        shape = RoundedCornerShape(26.dp),
+        color = scheme.primary,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
-                Modifier.size(38.dp).clip(CircleShape).background(scheme.primaryContainer),
+                Modifier.size(44.dp).background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = Color.White)
             }
-            Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.labelLarge)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("اسکن سند جدید", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text("تشخیص خودکار قاب و بهبود تصویر", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+            }
+            Text("›", color = Color.White, fontSize = 26.sp)
         }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, count: Int) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(8.dp))
+        if (count > 0) {
+            Text(
+                DateFa.fa(count),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+        Spacer(Modifier.weight(1f))
     }
 }
 
@@ -346,103 +433,60 @@ private fun QuickAction(
 private fun DocCard(doc: ScannerDoc, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp).pressClick { onClick() },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp).pressClick { onClick() },
         shape = RoundedCornerShape(20.dp),
         color = scheme.surface,
-        tonalElevation = 1.dp,
         shadowElevation = 1.dp
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            val thumb = doc.pages.firstOrNull()?.filePath()?.let { File(it) }
             FileImage(
-                file = thumb,
-                modifier = Modifier.size(68.dp).clip(RoundedCornerShape(16.dp)),
-                size = 220,
-                contentDescription = doc.title
+                file = doc.pages.firstOrNull()?.filePath()?.let { File(it) },
+                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(14.dp)),
+                size = 200
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
+                Text(doc.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(3.dp))
                 Text(
-                    doc.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    "${DateFa.fa(doc.pages.size)} صفحه • ${DateFa.short(doc.updatedAt)}",
+                    fontSize = 11.sp,
+                    color = scheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = scheme.primaryContainer, shape = CircleShape) {
-                        Text(
-                            "${DateFa.fa(doc.pages.size)} صفحه",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        DateFa.short(doc.updatedAt),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant
-                    )
-                }
-                val template = doc.template()
-                if (template != null) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        template.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.primary
-                    )
-                }
             }
-            Icon(Icons.Filled.ChevronLeft, contentDescription = null, tint = scheme.outline)
+            Text("›", color = scheme.outline, fontSize = 22.sp)
         }
     }
 }
 
 @Composable
-private fun EmptyState(onScan: () -> Unit) {
+private fun EmptyDocs(onScan: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = scheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = scheme.surface
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(vertical = 34.dp, horizontal = 20.dp),
+            Modifier.fillMaxWidth().padding(vertical = 26.dp, horizontal = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).background(scheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.DocumentScanner,
-                    contentDescription = null,
-                    tint = scheme.onPrimaryContainer,
-                    modifier = Modifier.size(34.dp)
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("هنوز سندی نساخته‌اید", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(6.dp))
+            Text("هنوز سندی نساخته‌اید", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(4.dp))
             Text(
-                "با «اسکن سند جدید» شروع کنید یا عکس و PDF وارد کنید.",
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant
+                "با دکمهٔ اسکن شروع کنید یا عکس و PDF وارد کنید.",
+                fontSize = 12.sp,
+                color = scheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(16.dp))
-            Surface(
-                color = scheme.primary,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.pressClick { onScan() }
-            ) {
+            Spacer(Modifier.height(12.dp))
+            Surface(color = scheme.primary, shape = RoundedCornerShape(14.dp), modifier = Modifier.pressClick { onScan() }) {
                 Text(
                     "شروع اسکن",
                     color = scheme.onPrimary,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp)
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                 )
             }
         }
@@ -450,93 +494,63 @@ private fun EmptyState(onScan: () -> Unit) {
 }
 
 @Composable
-private fun DateOrbit(onClick: () -> Unit) {
-    val today = remember { Calendars.todayJdn() }
-    val j = remember(today) { Calendars.d2j(today) }
-    val h = remember(today) { Calendars.toHijri(today) }
-    val g = remember(today) { Calendars.d2g(today) }
+private fun HomeBottomBar(
+    onHome: () -> Unit,
+    onCalendar: () -> Unit,
+    onScan: () -> Unit,
+    onTools: () -> Unit,
+    onSettings: () -> Unit
+) {
     val scheme = MaterialTheme.colorScheme
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .pressClick { onClick() },
-        shape = RoundedCornerShape(26.dp),
-        color = scheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant)
-    ) {
+    Surface(color = scheme.surface, shadowElevation = 8.dp) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                Modifier.weight(1f),
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    Calendars.jalaliMonths[(j.jm - 1).coerceIn(0, 11)],
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "${Calendars.gregorianMonths[(g.second - 1).coerceIn(0, 11)]} ${g.first}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    g.third.toString(),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.primary
-                )
-            }
-
-            Box(
-                Modifier
-                    .size(92.dp)
-                    .background(scheme.primaryContainer, CircleShape)
-                    .border(2.dp, scheme.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        Calendars.fa(j.jd),
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.onPrimaryContainer
-                    )
-                    Text(
-                        "شمسی",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+            BottomItem(Icons.Filled.Home, "خانه", true, Modifier.weight(1f), onHome)
+            BottomItem(Icons.Filled.CalendarMonth, "تقویم", false, Modifier.weight(1f), onCalendar)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier.size(54.dp).pressClick { onScan() },
+                    shape = CircleShape,
+                    color = scheme.primary,
+                    shadowElevation = 6.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "اسکن", tint = scheme.onPrimary)
+                    }
                 }
             }
-
-            Column(
-                Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    Calendars.weekdayName(today),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "${Calendars.hijriMonths[(h.hm - 1).coerceIn(0, 11)]} ${Calendars.fa(h.hy)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    Calendars.fa(h.hd),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.primary
-                )
-            }
+            BottomItem(Icons.Filled.Widgets, "ابزارها", false, Modifier.weight(1f), onTools)
+            BottomItem(Icons.Filled.Settings, "تنظیمات", false, Modifier.weight(1f), onSettings)
         }
+    }
+}
+
+@Composable
+private fun BottomItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = modifier.pressClick { onClick() }.padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f),
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label,
+            fontSize = 9.sp,
+            color = if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
+        )
     }
 }
