@@ -39,6 +39,11 @@ import androidx.compose.material.icons.filled.AutoMode
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -140,6 +145,11 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     var frameAspect by remember { mutableFloatStateOf(1.5f) }
     var hits by remember { mutableIntStateOf(0) }
     var target by remember { mutableStateOf<List<Float>?>(null) }
+    var torchOn by remember { mutableStateOf(false) }
+    var gridOn by remember { mutableStateOf(false) }
+    var frozen by remember { mutableStateOf(false) }
+    var zoomRatio by remember { mutableFloatStateOf(vm.prefs.cameraZoom) }
+    var maxZoom by remember { mutableFloatStateOf(4f) }
 
     val camera = remember {
         LifecycleCameraController(context).apply {
@@ -167,9 +177,47 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
         }
     }
 
-    LaunchedEffect(manualMode) {
-        analyzer.enabled = !manualMode
-        if (manualMode) liveQuad = null
+    LaunchedEffect(manualMode, frozen) {
+        analyzer.enabled = !manualMode && !frozen
+        if (manualMode || frozen) liveQuad = null
+    }
+
+    DisposableEffect(camera) {
+        val observer = androidx.lifecycle.Observer<androidx.camera.core.ZoomState> { state ->
+            maxZoom = state.maxZoomRatio
+            zoomRatio = state.zoomRatio
+        }
+        try {
+            camera.zoomState.observe(lifecycleOwner, observer)
+        } catch (t: Throwable) {
+            // نادیده‌گرفتنی
+        }
+        onDispose {
+            try {
+                camera.zoomState.removeObserver(observer)
+            } catch (t: Throwable) {
+                // نادیده‌گرفتنی
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            camera.setZoomRatio(vm.prefs.cameraZoom)
+        } catch (t: Throwable) {
+            // نادیده‌گرفتنی
+        }
+    }
+
+    fun applyZoom(value: Float) {
+        val targetZoom = value.coerceIn(1f, maxZoom.coerceAtLeast(1f))
+        zoomRatio = targetZoom
+        vm.prefs.cameraZoom = targetZoom
+        try {
+            camera.setZoomRatio(targetZoom)
+        } catch (t: Throwable) {
+            // نادیده‌گرفتنی
+        }
     }
 
     val executor = remember { Executors.newSingleThreadExecutor() }
@@ -249,7 +297,7 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     }
 
     LaunchedEffect(hits, autoCapture, capturing) {
-        if (autoCapture && !manualMode && !capturing && hits >= 5) {
+        if (autoCapture && !manualMode && !frozen && !capturing && hits >= 5) {
             hits = 0
             capture()
         }
@@ -278,6 +326,18 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
             )
         }
 
+        if (gridOn) {
+            Canvas(Modifier.fillMaxSize()) {
+                val c = Color.White.copy(alpha = 0.28f)
+                val w = size.width
+                val h = size.height
+                drawLine(c, Offset(w / 3f, 0f), Offset(w / 3f, h), 1.dp.toPx())
+                drawLine(c, Offset(w * 2f / 3f, 0f), Offset(w * 2f / 3f, h), 1.dp.toPx())
+                drawLine(c, Offset(0f, h / 3f), Offset(w, h / 3f), 1.dp.toPx())
+                drawLine(c, Offset(0f, h * 2f / 3f), Offset(w, h * 2f / 3f), 1.dp.toPx())
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -292,12 +352,35 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 }
                 Text("${DateFa.fa(shots)} صفحه", color = Color.White)
             }
-            IconButton(onClick = { flashOn = !flashOn }) {
-                Icon(
-                    if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                    contentDescription = "فلش",
-                    tint = if (flashOn) Color(0xFFFBBF24) else Color.White
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    torchOn = !torchOn
+                    try {
+                        camera.enableTorch(torchOn)
+                    } catch (t: Throwable) {
+                        // چراغ در دسترس نیست
+                    }
+                }) {
+                    Icon(
+                        if (torchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
+                        contentDescription = "چراغ قوه",
+                        tint = if (torchOn) Color(0xFFFBBF24) else Color.White
+                    )
+                }
+                IconButton(onClick = { gridOn = !gridOn }) {
+                    Icon(
+                        Icons.Filled.GridOn,
+                        contentDescription = "خطوط راهنما",
+                        tint = if (gridOn) Color(0xFF5EEAD4) else Color.White
+                    )
+                }
+                IconButton(onClick = { flashOn = !flashOn }) {
+                    Icon(
+                        if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                        contentDescription = "فلش",
+                        tint = if (flashOn) Color(0xFFFBBF24) else Color.White
+                    )
+                }
             }
         }
 
@@ -335,6 +418,13 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ModeChip("−", false) { applyZoom(zoomRatio - 0.5f) }
+                ModeChip("${String.format("%.1f", zoomRatio)}×", true) { applyZoom(1f) }
+                ModeChip("+", false) { applyZoom(zoomRatio + 0.5f) }
+                ModeChip("حداکثر", false) { applyZoom(maxZoom) }
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ModeChip("تشخیص خودکار", !manualMode) {
@@ -386,7 +476,28 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                     }
                 }
 
-                Spacer(Modifier.width(56.dp))
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .background(
+                            if (frozen) Color(0xFF5EEAD4) else Color.White.copy(alpha = 0.18f),
+                            CircleShape
+                        )
+                        .pressClick {
+                            frozen = !frozen
+                            if (frozen) {
+                                autoCapture = false
+                                vm.postMessage("تصویر قفل شد؛ حالا با دکمهٔ عکس بگیر.")
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (frozen) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                        contentDescription = "قفل تصویر",
+                        tint = if (frozen) Color(0xFF00322B) else Color.White
+                    )
+                }
             }
         }
     }

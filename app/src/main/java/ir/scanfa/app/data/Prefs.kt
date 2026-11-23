@@ -64,6 +64,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("season_effects", true)
         set(value) = sp.edit().putBoolean("season_effects", value).apply()
 
+    /** آخرین بزرگ‌نمایی دوربین */
+    var cameraZoom: Float
+        get() = sp.getFloat("camera_zoom", 1f).coerceIn(1f, 8f)
+        set(value) = sp.edit().putFloat("camera_zoom", value.coerceIn(1f, 8f)).apply()
+
     /** قفل برنامه با رمز ۶ رقمی */
     var lockEnabled: Boolean
         get() = sp.getBoolean("lock_enabled", false)
