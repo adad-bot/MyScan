@@ -11,6 +11,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,12 +24,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import ir.scanfa.app.vm.ScannerViewModel
 
 @Composable
@@ -48,7 +70,35 @@ fun AppNav(vm: ScannerViewModel) {
         return
     }
 
-    Box(Modifier.fillMaxSize()) {
+    var helpTopic by remember { mutableStateOf<HelpTopic?>(null) }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    var count = 0
+                    var lastTime = 0L
+                    var wasDown = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val down = event.changes.any { it.pressed }
+                        if (down && !wasDown) {
+                            val now = System.currentTimeMillis()
+                            if (now - lastTime > 800L) count = 0
+                            count += 1
+                            lastTime = now
+                            if (count >= 3) {
+                                count = 0
+                                val route = nav.currentBackStackEntry?.destination?.route
+                                helpTopic = Help.forRoute(route)
+                            }
+                        }
+                        wasDown = down
+                    }
+                }
+            }
+    ) {
         NavHost(
             navController = nav,
             startDestination = "home",
@@ -121,6 +171,10 @@ fun AppNav(vm: ScannerViewModel) {
             composable("about") { AboutScreen(vm, nav) }
         }
 
+        helpTopic?.let { topic ->
+            HelpDialog(topic) { helpTopic = null }
+        }
+
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 92.dp)
@@ -136,4 +190,55 @@ fun AppNav(vm: ScannerViewModel) {
             }
         }
     }
+}
+
+@Composable
+fun HelpDialog(topic: HelpTopic, onClose: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    AlertDialog(
+        onDismissRequest = onClose,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = scheme.surface,
+        icon = {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .background(scheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(topic.icon, contentDescription = null, tint = scheme.onPrimaryContainer)
+            }
+        },
+        title = {
+            Text(
+                topic.title,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    topic.body,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                    color = scheme.onSurface
+                )
+                Spacer(Modifier.height(10.dp))
+                topic.tips.forEach { tip ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Text("•", color = scheme.primary, fontSize = 15.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(tip, fontSize = 13.sp, color = scheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onClose) { Text("متوجه شدم") }
+        }
+    )
 }

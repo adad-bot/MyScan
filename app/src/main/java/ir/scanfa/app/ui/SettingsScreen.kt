@@ -84,6 +84,13 @@ fun SettingsScreen(vm: ScannerViewModel, nav: NavHostController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Text(
+                "راهنما: روی هر بخش سه بار پشت‌سرهم کلیک کن تا توضیح همان بخش را ببینی.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+            )
+
             SettingCard("فعال‌سازی منوها") {
                 SwitchRow(
                     "با دو کلیک فعال شود",

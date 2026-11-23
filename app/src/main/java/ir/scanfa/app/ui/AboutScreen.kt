@@ -150,6 +150,13 @@ fun AboutScreen(vm: ScannerViewModel, nav: NavHostController) {
                 }
             }
 
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "راهنما: سه کلیک پشت‌سرهم روی هر بخش، توضیح همان بخش را نشان می‌دهد.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
             Spacer(Modifier.height(20.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MyScanLogo(size = 20.dp)
