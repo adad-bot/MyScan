@@ -14,6 +14,7 @@ import org.opencv.core.Point
 import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
+import org.opencv.photo.Photo
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -247,9 +248,12 @@ object OpenCvScanner {
         return try {
             val mat = Mat()
             Utils.bitmapToMat(src, mat)
-
-            val shadowFree = removeShadow(mat)
+            val rgb = Mat()
+            Imgproc.cvtColor(mat, rgb, Imgproc.COLOR_RGBA2RGB)
             mat.release()
+
+            val shadowFree = removeShadow(rgb)
+            rgb.release()
 
             // کاهش نویز دوربین بدون نرم‌کردن متن
             val denoised = Mat()
@@ -257,18 +261,44 @@ object OpenCvScanner {
             shadowFree.release()
 
             // تعادل رنگ سفید ملایم بر اساس رنگ کاغذ
-            val balanced = whiteBalance(denoised)
+            val balanced0 = whiteBalance(denoised)
             denoised.release()
 
-            val lab = Mat()
-            Imgproc.cvtColor(balanced, lab, Imgproc.COLOR_RGBA2RGB)
-            balanced.release()
+            // کاهش نویز رنگی قبل از سفیدکردن (مثل اسکنرهای حرفه‌ای)
+            val balanced = Mat()
+            try {
+                Photo.fastNlMeansDenoisingColored(balanced0, balanced, 3f, 3f, 7, 21)
+            } catch (t: Throwable) {
+                balanced0.copyTo(balanced)
+            }
+            balanced0.release()
+
             val labSpace = Mat()
-            Imgproc.cvtColor(lab, labSpace, Imgproc.COLOR_RGB2Lab)
-            lab.release()
+            Imgproc.cvtColor(balanced, labSpace, Imgproc.COLOR_RGB2Lab)
+            balanced.release()
             val channels = ArrayList<Mat>()
             Core.split(labSpace, channels)
             Imgproc.createCLAHE(1.15, Size(8.0, 8.0)).apply(channels[0], channels[0])
+            // سفیدکردن کاغذ (مثل اسکنرهای حرفه‌ای) با LUT ملایم روی روشنایی
+            val l = channels[0]
+            val black = percentile(l, 0.02)
+            val white = percentile(l, 0.80)
+            val span = (white - black).coerceAtLeast(30.0)
+            val lut = Mat(256, 1, CvType.CV_8U)
+            val data = ByteArray(256)
+            for (i in 0 until 256) {
+                val v = ((i - black) * 255.0 / span).coerceIn(0.0, 255.0)
+                data[i] = v.toInt().toByte()
+            }
+            lut.put(0, 0, data)
+            val mapped = Mat()
+            Core.LUT(l, lut, mapped)
+            lut.release()
+            val blended = Mat()
+            Core.addWeighted(l, 0.25, mapped, 0.75, 0.0, blended)
+            mapped.release()
+            blended.copyTo(l)
+            blended.release()
             Core.merge(channels, labSpace)
             val result = Mat()
             Imgproc.cvtColor(labSpace, result, Imgproc.COLOR_Lab2RGB)
@@ -279,9 +309,12 @@ object OpenCvScanner {
             val sharpened = adaptiveSharpen(result)
             result.release()
 
-            val bitmap = Bitmap.createBitmap(sharpened.cols(), sharpened.rows(), Bitmap.Config.ARGB_8888)
-            Utils.matToBitmap(sharpened, bitmap)
+            val rgba = Mat()
+            Imgproc.cvtColor(sharpened, rgba, Imgproc.COLOR_RGB2RGBA)
             sharpened.release()
+            val bitmap = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888)
+            Utils.matToBitmap(rgba, bitmap)
+            rgba.release()
             bitmap
         } catch (t: Throwable) {
             null
@@ -294,8 +327,8 @@ object OpenCvScanner {
         Core.split(src, channels)
         val out = ArrayList<Mat>()
         for (channel in channels) {
-            val p = percentile(channel, 0.94)
-            val scale = if (p < 60.0) 1.0 else (238.0 / p).coerceIn(0.95, 1.55)
+            val p = percentile(channel, 0.90)
+            val scale = if (p < 60.0) 1.0 else (252.0 / p).coerceIn(0.95, 2.2)
             val dst = Mat()
             Core.multiply(channel, Scalar(scale), dst)
             out.add(dst)
@@ -345,7 +378,7 @@ object OpenCvScanner {
 
     private fun adaptiveSharpen(src: Mat): Mat {
         val gray = Mat()
-        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY)
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY)
         val small = Mat()
         Imgproc.resize(gray, small, Size(320.0, (320.0 * gray.rows() / gray.cols()).coerceAtLeast(1.0)))
         val lap = Mat()
@@ -402,7 +435,7 @@ object OpenCvScanner {
 
     private fun removeShadow(src: Mat): Mat {
         val gray = Mat()
-        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY)
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY)
         val bg = Mat()
         val k = max(15, (max(src.width(), src.height()) / 22) or 1)
         Imgproc.GaussianBlur(gray, bg, Size(k.toDouble(), k.toDouble()), 0.0)

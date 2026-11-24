@@ -24,7 +24,7 @@ class ScanEngineTest {
         val context = instrumentation.targetContext
         val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
 
-        val names = listOf("one.png", "two.png")
+        val names = listOf("one.png", "two.png", "three.jpg")
         var processed = 0
         for (name in names) {
             val src = try {
