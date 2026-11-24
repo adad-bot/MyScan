@@ -70,6 +70,7 @@ dependencies {
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     implementation("org.opencv:opencv:4.9.0")
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

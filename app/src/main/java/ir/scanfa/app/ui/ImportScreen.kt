@@ -1,6 +1,7 @@
 package ir.scanfa.app.ui
 
 import android.app.Activity
+import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -39,8 +41,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import ir.scanfa.app.scan.MlKitScanner
+import ir.scanfa.app.scan.UvDocDewarper
+import java.io.File
+import java.io.FileOutputStream
 import ir.scanfa.app.vm.ScannerViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** ورود سند از گالری، فایل PDF یا دوربین. */
 @Composable
@@ -85,6 +92,64 @@ fun ImportScreen(vm: ScannerViewModel, nav: NavHostController) {
             onReady = { sender -> mlLauncher.launch(IntentSenderRequest.Builder(sender).build()) },
             onError = { msg -> vm.postMessage(msg) }
         )
+    }
+
+    val aiPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            vm.postMessage("تصویری انتخاب نشد.")
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            val decoded = withContext(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val options = BitmapFactory.Options().apply { inSampleSize = 2 }
+                        BitmapFactory.decodeStream(stream, null, options)
+                    }
+                } catch (t: Throwable) {
+                    null
+                }
+            }
+            if (decoded == null) {
+                vm.postMessage("خواندن تصویر ناموفق بود.")
+                return@launch
+            }
+            vm.postMessage("در حال صاف‌کردن با هوش مصنوعی…")
+            val dewarped = withContext(Dispatchers.IO) { UvDocDewarper.dewarp(context, decoded) }
+            val processed = withContext(Dispatchers.IO) {
+                val source = dewarped ?: decoded
+                val cropped = ir.scanfa.app.scan.OpenCvScanner.cropToPaper(source)
+                val ready = cropped ?: source
+                if (cropped != null && cropped !== source) source.recycle()
+                ir.scanfa.app.scan.DocumentScanEngine.enhance(ready)
+            }
+            if (dewarped == null) vm.postMessage("مدل آفلاین در دسترس نبود؛ برش معمولی اعمال شد.")
+            val file = File(context.cacheDir, "ai_scan_	${System.currentTimeMillis()}.png")
+            try {
+                FileOutputStream(file).use { out ->
+                    processed.compress(android.graphics.Bitmap.CompressFormat.PNG, 95, out)
+                }
+            } catch (t: Throwable) {
+                vm.postMessage("ذخیرهٔ نتیجه ناموفق بود.")
+                return@launch
+            }
+            val id = vm.createDocument("", null)
+            val page = vm.addScannedPage(id, android.net.Uri.fromFile(file))
+            if (page != null) {
+                vm.postMessage("صفحه با هوش مصنوعی آفلاین اضافه شد.")
+                nav.navigate("editor/$id/${page.id}")
+            } else {
+                vm.postMessage("افزودن صفحه ناموفق بود.")
+                nav.navigate("doc/$id")
+            }
+            processed.recycle()
+            if (dewarped != null) dewarped.recycle()
+            decoded.recycle()
+        }
+    }
+
+    fun startAiScan() {
+        aiPicker.launch(arrayOf("image/*"))
     }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -145,6 +210,12 @@ fun ImportScreen(vm: ScannerViewModel, nav: NavHostController) {
                 title = "اسکن هوشمند (گوگل)",
                 subtitle = "تشخیص، برش، صاف‌کردن و بهبود خودکار — نیازمند سرویس گوگل",
             ) { startMlKit() }
+
+            ImportTile(
+                icon = Icons.Filled.AutoFixHigh,
+                title = "اسکن هوشمند (آفلاین)",
+                subtitle = "صاف‌کردن خمیدگی با مدل هوش مصنوعی داخل اپ — بدون اینترنت",
+            ) { startAiScan() }
 
             ImportTile(
                 icon = Icons.Filled.PhotoLibrary,

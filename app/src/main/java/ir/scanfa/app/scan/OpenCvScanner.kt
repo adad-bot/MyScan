@@ -701,6 +701,50 @@ object OpenCvScanner {
         return 255.0
     }
 
+    /** بریدن حاشیهٔ تیره/رنگی اطراف کاغذ صاف‌شده با استفاده از ماسک روشنایی. */
+    fun cropToPaper(src: Bitmap): Bitmap? {
+        if (!isReady()) return null
+        return try {
+            val mat = Mat()
+            Utils.bitmapToMat(src, mat)
+            val rgb = Mat()
+            Imgproc.cvtColor(mat, rgb, Imgproc.COLOR_RGBA2RGB)
+            mat.release()
+            val hsv = Mat()
+            Imgproc.cvtColor(rgb, hsv, Imgproc.COLOR_RGB2HSV)
+            val mask = Mat()
+            Core.inRange(hsv, Scalar(0.0, 0.0, 120.0), Scalar(180.0, 90.0, 255.0), mask)
+            hsv.release()
+            val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(11.0, 11.0))
+            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, kernel)
+            val contours = ArrayList<MatOfPoint>()
+            Imgproc.findContours(mask, contours, Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+            mask.release()
+            val largest = contours.maxByOrNull { Imgproc.contourArea(it) } ?: return null
+            if (Imgproc.contourArea(largest) < rgb.cols() * rgb.rows() * 0.2) return null
+            val rect = Imgproc.boundingRect(largest)
+            val insetX = (rect.width * 0.015).toInt()
+            val insetY = (rect.height * 0.015).toInt()
+            val cropRect = org.opencv.core.Rect(
+                (rect.x + insetX).coerceIn(0, rgb.cols() - 2),
+                (rect.y + insetY).coerceIn(0, rgb.rows() - 2),
+                (rect.width - 2 * insetX).coerceAtLeast(16),
+                (rect.height - 2 * insetY).coerceAtLeast(16)
+            )
+            val cropped = Mat(rgb, cropRect)
+            val rgba = Mat()
+            Imgproc.cvtColor(cropped, rgba, Imgproc.COLOR_RGB2RGBA)
+            cropped.release()
+            rgb.release()
+            val bitmap = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888)
+            Utils.matToBitmap(rgba, bitmap)
+            rgba.release()
+            bitmap
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
     private fun removeShadow(src: Mat): Mat {
         val gray = Mat()
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY)

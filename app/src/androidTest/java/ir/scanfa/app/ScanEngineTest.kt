@@ -8,6 +8,7 @@ import android.graphics.Paint
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import ir.scanfa.app.scan.DocumentScanEngine
+import ir.scanfa.app.scan.UvDocDewarper
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,6 +80,25 @@ class ScanEngineTest {
             )
         }
         assertTrue("هیچ نمونه‌ای پردازش نشد", processed > 0)
+    }
+
+    @Test
+    fun dewarpSample() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val dewarped = UvDocDewarper.dewarp(context, src) ?: error("UVDoc model failed")
+        save(dewarped, File(outDir, "three_uvdoc.png"))
+        val cropped = ir.scanfa.app.scan.OpenCvScanner.cropToPaper(dewarped) ?: dewarped
+        val enhanced = DocumentScanEngine.enhance(cropped)
+        save(enhanced, File(outDir, "three_uvdoc_final.png"))
+        enhanced.recycle()
+        dewarped.recycle()
+        if (cropped !== dewarped) cropped.recycle()
+        src.recycle()
     }
 
     private fun save(bitmap: Bitmap, file: File) {
