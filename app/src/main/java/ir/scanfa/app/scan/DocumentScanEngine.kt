@@ -76,6 +76,18 @@ object DocumentScanEngine {
 
     fun crop(src: Bitmap, quad: Quad?, maxSide: Int = 2200): Bitmap {
         val q = quad ?: detect(src).quad ?: Quad.inset(src.width, src.height, 0.02f)
+        try {
+            if (OpenCvScanner.isReady()) {
+                val cv = OpenCvScanner.warp(src, q, maxSide)
+                if (cv != null) {
+                    val trimmed = SmartScan.trimEdges(cv)
+                    if (trimmed !== cv) cv.recycle()
+                    return trimmed
+                }
+            }
+        } catch (t: Throwable) {
+            // ادامه با Warp داخلی
+        }
         var bmp = Warp.warp(src, q, maxSide)
         val trimmed = SmartScan.trimEdges(bmp)
         if (trimmed !== bmp) {

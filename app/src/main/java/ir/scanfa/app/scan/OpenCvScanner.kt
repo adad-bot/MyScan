@@ -183,89 +183,101 @@ object OpenCvScanner {
         return touching >= 3
     }
 
-    /** برش + صاف‌سازی + حذف سایه + CLAHE + رنگ و تیزی. */
+    /** فقط برش و اصلاح پرسپکتیو (بدون بهبود). */
+    fun warp(src: Bitmap, quad: Quad?, maxSide: Int = 2200): Bitmap? {
+        if (!isReady()) return null
+        if (quad == null) return null
+        return try {
+            val mat = Mat()
+            Utils.bitmapToMat(src, mat)
+            val wA = dist(quad.tl, quad.tr)
+            val wB = dist(quad.bl, quad.br)
+            val hA = dist(quad.tl, quad.bl)
+            val hB = dist(quad.tr, quad.br)
+            var outW = max(wA, wB).toInt().coerceAtLeast(32)
+            var outH = max(hA, hB).toInt().coerceAtLeast(32)
+            val longEdge = max(outW, outH)
+            if (longEdge > maxSide) {
+                val k = maxSide.toFloat() / longEdge
+                outW = (outW * k).toInt()
+                outH = (outH * k).toInt()
+            }
+            val srcPts = org.opencv.core.MatOfPoint2f(
+                Point(quad.tl.x.toDouble(), quad.tl.y.toDouble()),
+                Point(quad.tr.x.toDouble(), quad.tr.y.toDouble()),
+                Point(quad.br.x.toDouble(), quad.br.y.toDouble()),
+                Point(quad.bl.x.toDouble(), quad.bl.y.toDouble())
+            )
+            val dstPts = org.opencv.core.MatOfPoint2f(
+                Point(0.0, 0.0),
+                Point(outW.toDouble(), 0.0),
+                Point(outW.toDouble(), outH.toDouble()),
+                Point(0.0, outH.toDouble())
+            )
+            val transform = Imgproc.getPerspectiveTransform(srcPts, dstPts)
+            val out = Mat()
+            Imgproc.warpPerspective(mat, out, transform, Size(outW.toDouble(), outH.toDouble()))
+            transform.release()
+            srcPts.release()
+            dstPts.release()
+            mat.release()
+            val bitmap = Bitmap.createBitmap(out.cols(), out.rows(), Bitmap.Config.ARGB_8888)
+            Utils.matToBitmap(out, bitmap)
+            out.release()
+            bitmap
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+    /** برش + بهبود کامل. */
     fun scan(src: Bitmap, quad: Quad?, maxSide: Int = 2200): Bitmap? {
+        val warped = warp(src, quad, maxSide) ?: return null
+        val enhanced = enhanceOnly(warped)
+        if (enhanced != null) {
+            warped.recycle()
+            return enhanced
+        }
+        return warped
+    }
+
+    /** فقط بهبود (بدون برش): سایه‌زدایی، تعادل سفید، سفیدکردن کاغذ، CLAHE و تیزکردن تطبیقی. */
+    fun enhanceOnly(src: Bitmap): Bitmap? {
         if (!isReady()) return null
         return try {
             val mat = Mat()
             Utils.bitmapToMat(src, mat)
-            var warped = mat
-            if (quad != null) {
-                val wA = dist(quad.tl, quad.tr)
-                val wB = dist(quad.bl, quad.br)
-                val hA = dist(quad.tl, quad.bl)
-                val hB = dist(quad.tr, quad.br)
-                var outW = max(wA, wB).toInt().coerceAtLeast(32)
-                var outH = max(hA, hB).toInt().coerceAtLeast(32)
-                val longEdge = max(outW, outH)
-                if (longEdge > maxSide) {
-                    val k = maxSide.toFloat() / longEdge
-                    outW = (outW * k).toInt()
-                    outH = (outH * k).toInt()
-                }
-                val srcPts = org.opencv.core.MatOfPoint2f(
-                    Point(quad.tl.x.toDouble(), quad.tl.y.toDouble()),
-                    Point(quad.tr.x.toDouble(), quad.tr.y.toDouble()),
-                    Point(quad.br.x.toDouble(), quad.br.y.toDouble()),
-                    Point(quad.bl.x.toDouble(), quad.bl.y.toDouble())
-                )
-                val dstPts = org.opencv.core.MatOfPoint2f(
-                    Point(0.0, 0.0),
-                    Point(outW.toDouble(), 0.0),
-                    Point(outW.toDouble(), outH.toDouble()),
-                    Point(0.0, outH.toDouble())
-                )
-                val transform = Imgproc.getPerspectiveTransform(srcPts, dstPts)
-                val out = Mat()
-                Imgproc.warpPerspective(mat, out, transform, Size(outW.toDouble(), outH.toDouble()))
-                transform.release()
-                srcPts.release()
-                dstPts.release()
-                if (warped !== mat) warped.release()
-                warped = out
-            }
 
-            // حذف سایه: تقسیم بر پس‌زمینهٔ محو
-            val shadowFree = removeShadow(warped)
-            if (shadowFree !== warped) warped.release()
+            val shadowFree = removeShadow(mat)
+            mat.release()
 
-            // CLAHE روی روشنایی
+            // کاهش نویز دوربین بدون نرم‌کردن متن
+            val denoised = Mat()
+            Imgproc.bilateralFilter(shadowFree, denoised, 5, 28.0, 28.0)
+            shadowFree.release()
+
+            // تعادل رنگ سفید ملایم بر اساس رنگ کاغذ
+            val balanced = whiteBalance(denoised)
+            denoised.release()
+
             val lab = Mat()
-            Imgproc.cvtColor(shadowFree, lab, Imgproc.COLOR_RGBA2RGB)
+            Imgproc.cvtColor(balanced, lab, Imgproc.COLOR_RGBA2RGB)
+            balanced.release()
             val labSpace = Mat()
             Imgproc.cvtColor(lab, labSpace, Imgproc.COLOR_RGB2Lab)
             lab.release()
             val channels = ArrayList<Mat>()
             Core.split(labSpace, channels)
-            val clahe = Imgproc.createCLAHE(1.6, Size(8.0, 8.0))
-            clahe.apply(channels[0], channels[0])
+            Imgproc.createCLAHE(1.15, Size(8.0, 8.0)).apply(channels[0], channels[0])
             Core.merge(channels, labSpace)
             val result = Mat()
             Imgproc.cvtColor(labSpace, result, Imgproc.COLOR_Lab2RGB)
             labSpace.release()
             channels.forEach { it.release() }
-            shadowFree.release()
 
-            // اشباع رنگ کمی بیشتر
-            val hsv = Mat()
-            Imgproc.cvtColor(result, hsv, Imgproc.COLOR_RGB2HSV)
+            // تیزکردن فقط اگر تصویر نرم باشد
+            val sharpened = adaptiveSharpen(result)
             result.release()
-            val hsvChannels = ArrayList<Mat>()
-            Core.split(hsv, hsvChannels)
-            Core.multiply(hsvChannels[1], Scalar(1.12), hsvChannels[1])
-            Core.merge(hsvChannels, hsv)
-            val colored = Mat()
-            Imgproc.cvtColor(hsv, colored, Imgproc.COLOR_HSV2RGB)
-            hsv.release()
-            hsvChannels.forEach { it.release() }
-
-            // تیزکردن ملایم
-            val blurred = Mat()
-            Imgproc.GaussianBlur(colored, blurred, Size(0.0, 0.0), 3.0)
-            val sharpened = Mat()
-            Core.addWeighted(colored, 1.35, blurred, -0.35, 0.0, sharpened)
-            blurred.release()
-            colored.release()
 
             val bitmap = Bitmap.createBitmap(sharpened.cols(), sharpened.rows(), Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(sharpened, bitmap)
@@ -276,52 +288,116 @@ object OpenCvScanner {
         }
     }
 
-    /** فقط بهبود (بدون برش) برای صفحاتی که از قبل برش خورده‌اند. */
-    fun enhanceOnly(src: Bitmap): Bitmap? {
-        if (!isReady()) return null
-        return try {
-            val mat = Mat()
-            Utils.bitmapToMat(src, mat)
-            val shadowFree = removeShadow(mat)
-            mat.release()
-            val lab = Mat()
-            Imgproc.cvtColor(shadowFree, lab, Imgproc.COLOR_RGBA2RGB)
-            shadowFree.release()
-            val labSpace = Mat()
-            Imgproc.cvtColor(lab, labSpace, Imgproc.COLOR_RGB2Lab)
-            lab.release()
-            val channels = ArrayList<Mat>()
-            Core.split(labSpace, channels)
-            Imgproc.createCLAHE(1.6, Size(8.0, 8.0)).apply(channels[0], channels[0])
-            Core.merge(channels, labSpace)
-            val result = Mat()
-            Imgproc.cvtColor(labSpace, result, Imgproc.COLOR_Lab2RGB)
-            labSpace.release()
-            channels.forEach { it.release() }
-            val hsv = Mat()
-            Imgproc.cvtColor(result, hsv, Imgproc.COLOR_RGB2HSV)
-            result.release()
-            val hsvChannels = ArrayList<Mat>()
-            Core.split(hsv, hsvChannels)
-            Core.multiply(hsvChannels[1], Scalar(1.12), hsvChannels[1])
-            Core.merge(hsvChannels, hsv)
-            val colored = Mat()
-            Imgproc.cvtColor(hsv, colored, Imgproc.COLOR_HSV2RGB)
-            hsv.release()
-            hsvChannels.forEach { it.release() }
-            val blurred = Mat()
-            Imgproc.GaussianBlur(colored, blurred, Size(0.0, 0.0), 3.0)
-            val sharpened = Mat()
-            Core.addWeighted(colored, 1.35, blurred, -0.35, 0.0, sharpened)
-            blurred.release()
-            colored.release()
-            val bitmap = Bitmap.createBitmap(sharpened.cols(), sharpened.rows(), Bitmap.Config.ARGB_8888)
-            Utils.matToBitmap(sharpened, bitmap)
-            sharpened.release()
-            bitmap
-        } catch (t: Throwable) {
-            null
+    /** هر کانال را طوری مقیاس می‌کند که کاغذ به سفید نزدیک شود (حذف رنگ‌زدگی چراغ اتاق). */
+    private fun whiteBalance(src: Mat): Mat {
+        val channels = ArrayList<Mat>()
+        Core.split(src, channels)
+        val out = ArrayList<Mat>()
+        for (channel in channels) {
+            val p = percentile(channel, 0.94)
+            val scale = if (p < 60.0) 1.0 else (238.0 / p).coerceIn(0.95, 1.55)
+            val dst = Mat()
+            Core.multiply(channel, Scalar(scale), dst)
+            out.add(dst)
+            channel.release()
         }
+        val merged = Mat()
+        Core.merge(out, merged)
+        out.forEach { it.release() }
+        return merged
+    }
+
+    /** بردن کاغذ به سفید و سایه‌های روشن به سفید، بدون خردکردن متن. */
+    private fun levels(src: Mat): Mat {
+        val rgb = Mat()
+        Imgproc.cvtColor(src, rgb, Imgproc.COLOR_RGBA2RGB)
+        val lab = Mat()
+        Imgproc.cvtColor(rgb, lab, Imgproc.COLOR_RGB2Lab)
+        rgb.release()
+        val channels = ArrayList<Mat>()
+        Core.split(lab, channels)
+        val l = channels[0]
+
+        val low = percentile(l, 0.03)
+        val high = percentile(l, 0.86)
+        val span = (high - low).coerceAtLeast(25.0)
+        val lut = Mat(256, 1, CvType.CV_8U)
+        val data = ByteArray(256)
+        for (i in 0 until 256) {
+            val v = ((i - low) * 255.0 / span).coerceIn(0.0, 255.0)
+            val white = if (v > 232.0) 255.0 else v
+            data[i] = white.toInt().toByte()
+        }
+        lut.put(0, 0, data)
+        val mapped = Mat()
+        Core.LUT(l, lut, mapped)
+        lut.release()
+        mapped.copyTo(l)
+        mapped.release()
+        Core.merge(channels, lab)
+        channels.forEach { it.release() }
+
+        val out = Mat()
+        Imgproc.cvtColor(lab, out, Imgproc.COLOR_Lab2RGB)
+        lab.release()
+        return out
+    }
+
+    private fun adaptiveSharpen(src: Mat): Mat {
+        val gray = Mat()
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY)
+        val small = Mat()
+        Imgproc.resize(gray, small, Size(320.0, (320.0 * gray.rows() / gray.cols()).coerceAtLeast(1.0)))
+        val lap = Mat()
+        Imgproc.Laplacian(small, lap, CvType.CV_64F)
+        val mean = MatOfDoubleWrapper(lap)
+        val variance = mean.variance
+        gray.release()
+        small.release()
+        lap.release()
+
+        if (variance > 260.0) return src.clone()
+
+        val blurred = Mat()
+        Imgproc.GaussianBlur(src, blurred, Size(0.0, 0.0), 2.2)
+        val sharpened = Mat()
+        Core.addWeighted(src, 1.14, blurred, -0.14, 0.0, sharpened)
+        blurred.release()
+        return sharpened
+    }
+
+    private class MatOfDoubleWrapper(mat: Mat) {
+        val variance: Double
+
+        init {
+            val meanMat = org.opencv.core.MatOfDouble()
+            val stdMat = org.opencv.core.MatOfDouble()
+            Core.meanStdDev(mat, meanMat, stdMat)
+            val std = stdMat.toArray().firstOrNull() ?: 0.0
+            variance = std * std
+            meanMat.release()
+            stdMat.release()
+        }
+    }
+
+    private fun percentile(channel: Mat, fraction: Double): Double {
+        val small = Mat()
+        val targetW = 240.0
+        val targetH = (targetW * channel.rows() / channel.cols()).coerceAtLeast(1.0)
+        Imgproc.resize(channel, small, Size(targetW, targetH))
+        val total = small.total().toInt().coerceAtLeast(1)
+        val data = ByteArray(total)
+        small.get(0, 0, data)
+        small.release()
+        val histogram = IntArray(256)
+        for (b in data) histogram[b.toInt() and 0xFF]++
+        val target = (total * fraction).toInt().coerceIn(1, total)
+        var acc = 0
+        for (i in 0 until 256) {
+            acc += histogram[i]
+            if (acc >= target) return i.toDouble()
+        }
+        return 255.0
     }
 
     private fun removeShadow(src: Mat): Mat {

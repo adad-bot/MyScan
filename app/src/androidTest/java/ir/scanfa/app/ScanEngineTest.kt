@@ -59,6 +59,18 @@ class ScanEngineTest {
             val scanned = DocumentScanEngine.scan(src)
             save(scanned, File(outDir, "${name}_out.png"))
             scanned.recycle()
+
+            // همان مسیر خودِ برنامه: برش + فیلتر + بهبود
+            val cropped = DocumentScanEngine.crop(src, detection.quad, 2200)
+            val filtered = ir.scanfa.app.image.Filters.apply(cropped, ir.scanfa.app.data.FilterKind.ENHANCE)
+            val appResult = DocumentScanEngine.enhance(
+                filtered,
+                DocumentScanEngine.Config(maxSide = 2200)
+            )
+            save(appResult, File(outDir, "${name}_app.png"))
+            appResult.recycle()
+            if (filtered !== cropped) cropped.recycle()
+            filtered.recycle()
             src.recycle()
             processed++
             android.util.Log.i(

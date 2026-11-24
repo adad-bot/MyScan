@@ -343,13 +343,14 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             }
             var bmp = ir.scanfa.app.scan.DocumentScanEngine.crop(src, quad, maxDim)
             if (bmp !== src) src.recycle()
-            val filtered = Filters.apply(bmp, filter)
-            if (filtered !== bmp) bmp.recycle()
-            bmp = filtered
             if (filter == FilterKind.ENHANCE) {
                 val improved = ir.scanfa.app.scan.DocumentScanEngine.enhance(bmp)
                 if (improved !== bmp) bmp.recycle()
                 bmp = improved
+            } else {
+                val filtered = Filters.apply(bmp, filter)
+                if (filtered !== bmp) bmp.recycle()
+                bmp = filtered
             }
             bmp = Img.rotate(bmp, page.rotation)
             if (erase.size >= 3) {
@@ -382,13 +383,14 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             val normalized = crop ?: quad.toNormalized(src.width, src.height)
             var bmp = ir.scanfa.app.scan.DocumentScanEngine.crop(src, quad, 2200)
             if (bmp !== src) src.recycle()
-            val filtered = Filters.apply(bmp, filter)
-            if (filtered !== bmp) bmp.recycle()
-            bmp = filtered
             if (filter == FilterKind.ENHANCE) {
                 val improved = ir.scanfa.app.scan.DocumentScanEngine.enhance(bmp)
                 if (improved !== bmp) bmp.recycle()
                 bmp = improved
+            } else {
+                val filtered = Filters.apply(bmp, filter)
+                if (filtered !== bmp) bmp.recycle()
+                bmp = filtered
             }
             bmp = Img.rotate(bmp, page.rotation)
             if (erase.size >= 3) {
