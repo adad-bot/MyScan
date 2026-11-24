@@ -234,6 +234,33 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         return id
     }
 
+    /** صفحه‌ای که ML Kit گوگل قبلاً برش/صاف/بهبود داده را بدون پردازش دوباره اضافه می‌کند. */
+    suspend fun addScannedPage(docId: String, uri: Uri): Page? = withContext(Dispatchers.IO) {
+        val doc = DocStore.load(docId) ?: return@withContext null
+        val target = DocStore.newImageFile(docId, "orig")
+        val copied = try {
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            } != null
+        } catch (t: Throwable) {
+            false
+        }
+        if (!copied || target.length() == 0L) {
+            target.delete()
+            return@withContext null
+        }
+        val page = Page(
+            id = UUID.randomUUID().toString().take(10),
+            originalPath = target.absolutePath,
+            filter = FilterKind.ORIGINAL.id,
+            crop = listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f)
+        )
+        doc.pages.add(page)
+        DocStore.save(doc)
+        refresh()
+        page
+    }
+
     suspend fun addPageFromUri(docId: String, uri: Uri, insertAt: Int? = null): Page? = withContext(Dispatchers.IO) {
         val tmp = File(getApplication<Application>().cacheDir, "import_${System.currentTimeMillis()}.jpg")
         val copied = try {

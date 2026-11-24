@@ -1,6 +1,8 @@
 package ir.scanfa.app.ui
 
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import ir.scanfa.app.scan.MlKitScanner
 import ir.scanfa.app.vm.ScannerViewModel
 import kotlinx.coroutines.launch
 
@@ -42,6 +46,46 @@ import kotlinx.coroutines.launch
 @Composable
 fun ImportScreen(vm: ScannerViewModel, nav: NavHostController) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val mlLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { res ->
+        if (res.resultCode == Activity.RESULT_OK) {
+            val data = res.data
+            val uris = if (data != null) MlKitScanner.resultPages(data) else emptyList()
+            if (uris.isEmpty()) {
+                vm.postMessage("نتیجه‌ای از اسکنر گوگل نرسید.")
+            } else {
+                scope.launch {
+                    val id = vm.createDocument("", null)
+                    var count = 0
+                    for (uri in uris) {
+                        if (vm.addScannedPage(id, uri) != null) count++
+                    }
+                    if (count > 0) {
+                        vm.postMessage("${ir.scanfa.app.util.DateFa.fa(count)} صفحه اضافه شد.")
+                        nav.navigate("doc/$id")
+                    } else {
+                        vm.postMessage("خواندن صفحات ناموفق بود.")
+                    }
+                }
+            }
+        }
+    }
+
+    fun startMlKit() {
+        val activity = context as? Activity
+        if (activity == null || !MlKitScanner.available(context)) {
+            vm.postMessage("سرویس اسکن گوگل روی این دستگاه نیست؛ از «تصویر از گالری» یا «دوربین» استفاده کن.")
+            return
+        }
+        MlKitScanner.start(
+            activity,
+            onReady = { sender -> mlLauncher.launch(IntentSenderRequest.Builder(sender).build()) },
+            onError = { msg -> vm.postMessage(msg) }
+        )
+    }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) {
@@ -95,6 +139,12 @@ fun ImportScreen(vm: ScannerViewModel, nav: NavHostController) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
+
+            ImportTile(
+                icon = Icons.Filled.AutoAwesome,
+                title = "اسکن هوشمند (گوگل)",
+                subtitle = "تشخیص، برش، صاف‌کردن و بهبود خودکار — نیازمند سرویس گوگل",
+            ) { startMlKit() }
 
             ImportTile(
                 icon = Icons.Filled.PhotoLibrary,
