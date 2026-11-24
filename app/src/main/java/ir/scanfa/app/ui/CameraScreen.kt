@@ -52,6 +52,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -148,6 +149,9 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
     var torchOn by remember { mutableStateOf(false) }
     var gridOn by remember { mutableStateOf(false) }
     var frozen by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(false) }
+    var pendingPageId by remember { mutableStateOf<String?>(null) }
+    var showManualHint by remember { mutableStateOf(false) }
     var zoomRatio by remember { mutableFloatStateOf(vm.prefs.cameraZoom) }
     var maxZoom by remember { mutableFloatStateOf(4f) }
 
@@ -269,14 +273,22 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(results: ImageCapture.OutputFileResults) {
+                        scanning = true
                         scope.launch {
                             val page = vm.addPageFromFile(docId, file, autoEnhance = true)
                             file.delete()
                             capturing = false
                             hits = 0
+                            kotlinx.coroutines.delay(950)
+                            scanning = false
                             if (page != null) {
                                 shots += 1
-                                nav.navigate("editor/$docId/${page.id}")
+                                if (vm.prefs.autoDetect && vm.lastCropConfidence < 0.35f) {
+                                    pendingPageId = page.id
+                                    showManualHint = true
+                                } else {
+                                    nav.navigate("editor/$docId/${page.id}")
+                                }
                             } else {
                                 vm.postMessage("ثبت تصویر ناموفق بود.")
                             }
@@ -499,6 +511,87 @@ fun CameraScreen(vm: ScannerViewModel, nav: NavHostController, docId: String) {
                     )
                 }
             }
+        }
+
+        if (scanning) {
+            val transition = rememberInfiniteTransition(label = "scanLine")
+            val progress by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(
+                        1400,
+                        easing = androidx.compose.animation.core.LinearEasing
+                    )
+                ),
+                label = "scanProgress"
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    val y = size.height * progress
+                    drawRect(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color(0xFF5EEAD4).copy(alpha = 0.35f),
+                                Color(0xFF5EEAD4),
+                                Color(0xFF5EEAD4).copy(alpha = 0.35f),
+                                Color.Transparent
+                            ),
+                            startY = y - 60f,
+                            endY = y + 60f
+                        ),
+                        topLeft = androidx.compose.ui.geometry.Offset(0f, y - 3f),
+                        size = androidx.compose.ui.geometry.Size(size.width, 6f)
+                    )
+                }
+                Surface(
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(
+                        "در حال اسکن هوشمند…",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
+                    )
+                }
+            }
+        }
+
+        if (showManualHint) {
+            AlertDialog(
+                onDismissRequest = {
+                    showManualHint = false
+                    pendingPageId = null
+                },
+                title = { Text("تشخیص هوشمند ممکن نشد") },
+                text = {
+                    Text(
+                        "لبه‌های سند به‌خوبی پیدا نشد. می‌توانی قاب را دستی روی سند بگذاری یا دوباره عکس بگیری.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val id = pendingPageId
+                        showManualHint = false
+                        pendingPageId = null
+                        if (id != null) nav.navigate("editor/$docId/$id")
+                    }) { Text("تنظیم دستی قاب") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showManualHint = false
+                        pendingPageId = null
+                    }) { Text("عکس دوباره") }
+                }
+            )
         }
     }
 }

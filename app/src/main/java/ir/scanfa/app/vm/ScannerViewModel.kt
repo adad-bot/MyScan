@@ -19,6 +19,8 @@ import ir.scanfa.app.image.Erase
 import ir.scanfa.app.image.Filters
 import ir.scanfa.app.image.Img
 import ir.scanfa.app.image.NoteRenderer
+import ir.scanfa.app.image.SmartScan
+import ir.scanfa.app.image.Enhance
 import ir.scanfa.app.image.PdfImport
 import ir.scanfa.app.image.Quad
 import ir.scanfa.app.image.Warp
@@ -53,6 +55,9 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _haptics = MutableStateFlow(true)
     val haptics: StateFlow<Boolean> = _haptics.asStateFlow()
+
+    @Volatile
+    var lastCropConfidence: Float = 0f
 
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
@@ -284,11 +289,15 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             return null
         }
         val bmp = Img.decode(target, 2400)
+        var confidence = 0f
         val crop = if (prefs.autoDetect && bmp != null) {
-            DocDetector.detect(bmp).toNormalized(bmp.width, bmp.height)
+            val result = SmartScan.detect(bmp)
+            confidence = result.confidence
+            result.quad?.toNormalized(bmp.width, bmp.height)
         } else {
             null
         }
+        lastCropConfidence = confidence
         bmp?.recycle()
         val page = Page(
             id = UUID.randomUUID().toString().take(10),
@@ -334,9 +343,18 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             }
             var bmp = Warp.warp(src, quad, maxDim)
             if (bmp !== src) src.recycle()
+            val trimmed = SmartScan.trimEdges(bmp)
+            if (trimmed !== bmp) bmp.recycle()
+            bmp = trimmed
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
-            bmp = Img.rotate(filtered, page.rotation)
+            bmp = filtered
+            if (filter == FilterKind.ENHANCE) {
+                val improved = Enhance.improve(bmp)
+                if (improved !== bmp) bmp.recycle()
+                bmp = improved
+            }
+            bmp = Img.rotate(bmp, page.rotation)
             if (erase.size >= 3) {
                 val erased = Erase.apply(bmp, erase)
                 if (erased !== bmp) bmp.recycle()
@@ -367,9 +385,18 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             val normalized = crop ?: quad.toNormalized(src.width, src.height)
             var bmp = Warp.warp(src, quad, 2200)
             if (bmp !== src) src.recycle()
+            val trimmed = SmartScan.trimEdges(bmp)
+            if (trimmed !== bmp) bmp.recycle()
+            bmp = trimmed
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
-            bmp = Img.rotate(filtered, page.rotation)
+            bmp = filtered
+            if (filter == FilterKind.ENHANCE) {
+                val improved = Enhance.improve(bmp)
+                if (improved !== bmp) bmp.recycle()
+                bmp = improved
+            }
+            bmp = Img.rotate(bmp, page.rotation)
             if (erase.size >= 3) {
                 val erased = Erase.apply(bmp, erase)
                 if (erased !== bmp) bmp.recycle()
