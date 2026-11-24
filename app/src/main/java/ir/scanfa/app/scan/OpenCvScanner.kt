@@ -184,6 +184,139 @@ object OpenCvScanner {
         return touching >= 3
     }
 
+
+    /**
+     * صاف‌کردن خمیدگی صفحه: ماسک کاغذ ساخته می‌شود، برای هر ستون لبهٔ بالا و پایین
+     * پیدا و با میانگین متحرک نرم می‌شود؛ سپس با remap هر ستون به ارتفاع یکسان کشیده
+     * می‌شود. نتیجه: متن‌های خمیده صاف و صفحه مستطیلی می‌شود.
+     */
+    fun unwarp(src: Bitmap, maxSide: Int = 2200): Bitmap? {
+        if (!isReady()) return null
+        return try {
+            val mat = Mat()
+            Utils.bitmapToMat(src, mat)
+            val rgb = Mat()
+            Imgproc.cvtColor(mat, rgb, Imgproc.COLOR_RGBA2RGB)
+            mat.release()
+
+            val scale = (900.0 / max(rgb.cols(), rgb.rows())).coerceAtMost(1.0)
+            val small = Mat()
+            Imgproc.resize(rgb, small, Size(rgb.cols() * scale, rgb.rows() * scale))
+
+            val hsv = Mat()
+            Imgproc.cvtColor(small, hsv, Imgproc.COLOR_RGB2HSV)
+            val mask = Mat()
+            Core.inRange(hsv, Scalar(0.0, 0.0, 110.0), Scalar(180.0, 85.0, 255.0), mask)
+            hsv.release()
+            val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(9.0, 9.0))
+            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, kernel)
+            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_OPEN, kernel)
+
+            val contours = ArrayList<MatOfPoint>()
+            Imgproc.findContours(mask, contours, Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+            mask.release()
+            if (contours.isEmpty()) return null
+            val largest = contours.maxByOrNull { Imgproc.contourArea(it) } ?: return null
+            val maskArea = Imgproc.contourArea(largest)
+            if (maskArea < small.cols() * small.rows() * 0.12) return null
+
+            val filled = Mat.zeros(small.rows(), small.cols(), CvType.CV_8U)
+            Imgproc.drawContours(filled, listOf(largest), -1, Scalar(255.0), -1)
+
+            val top = IntArray(small.cols()) { -1 }
+            val bottom = IntArray(small.cols()) { -1 }
+            val data = ByteArray(small.cols() * small.rows())
+            filled.get(0, 0, data)
+            for (x in 0 until small.cols()) {
+                var first = -1
+                var last = -1
+                for (y in 0 until small.rows()) {
+                    if ((data[y * small.cols() + x].toInt() and 0xFF) > 0) {
+                        if (first < 0) first = y
+                        last = y
+                    }
+                }
+                top[x] = first
+                bottom[x] = last
+            }
+            filled.release()
+
+            val valid = (0 until small.cols()).filter { top[it] >= 0 && bottom[it] - top[it] > small.rows() * 0.3 }
+            if (valid.size < small.cols() * 0.3) return null
+
+            // نرم‌کردن منحنی لبه‌ها
+            val window = 15
+            val smoothTop = FloatArray(small.cols())
+            val smoothBottom = FloatArray(small.cols())
+            for (x in 0 until small.cols()) {
+                var sumT = 0f
+                var sumB = 0f
+                var count = 0
+                for (k in -window..window) {
+                    val xx = (x + k).coerceIn(0, small.cols() - 1)
+                    if (top[xx] >= 0) {
+                        sumT += top[xx]
+                        sumB += bottom[xx]
+                        count++
+                    }
+                }
+                smoothTop[x] = if (count > 0) sumT / count else -1f
+                smoothBottom[x] = if (count > 0) sumB / count else -1f
+            }
+
+            val outW = (valid.size * (rgb.cols().toDouble() / small.cols())).toInt().coerceAtLeast(64)
+            val medianHeight = valid.map { smoothBottom[it] - smoothTop[it] }.sorted()[valid.size / 2]
+            var outH = (medianHeight * (rgb.rows().toDouble() / small.rows())).toInt().coerceAtLeast(64)
+            if (outW > maxSide || outH > maxSide) {
+                val k = maxSide.toFloat() / max(outW, outH)
+                outH = (outH * k).toInt()
+            }
+
+            val mapX = Mat(outH, outW, CvType.CV_32FC1)
+            val mapY = Mat(outH, outW, CvType.CV_32FC1)
+            val mapXData = FloatArray(outW * outH)
+            val mapYData = FloatArray(outW * outH)
+            val scaleX = rgb.cols().toDouble() / small.cols()
+            val scaleY = rgb.rows().toDouble() / small.rows()
+
+            for (u in 0 until outW) {
+                val pos = u.toFloat() / (outW - 1) * (valid.size - 1)
+                val i0 = pos.toInt().coerceIn(0, valid.size - 1)
+                val i1 = (i0 + 1).coerceAtMost(valid.size - 1)
+                val t = pos - i0
+                val colA = valid[i0]
+                val colB = valid[i1]
+                val tA = smoothTop[colA].coerceAtLeast(0f) + (smoothTop[colB].coerceAtLeast(0f) - smoothTop[colA].coerceAtLeast(0f)) * t
+                val bA = smoothBottom[colA].coerceAtLeast(1f) + (smoothBottom[colB].coerceAtLeast(1f) - smoothBottom[colA].coerceAtLeast(1f)) * t
+                val srcX = ((colA + (colB - colA) * t) * scaleX).toFloat()
+                for (v in 0 until outH) {
+                    val srcY = ((tA + (bA - tA) * v.toFloat() / (outH - 1)) * scaleY).toFloat()
+                    mapXData[v * outW + u] = srcX
+                    mapYData[v * outW + u] = srcY
+                }
+            }
+
+            mapX.put(0, 0, mapXData)
+            mapY.put(0, 0, mapYData)
+            val out = Mat()
+            Imgproc.remap(rgb, out, mapX, mapY, Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE)
+            mapX.release()
+            mapY.release()
+            rgb.release()
+            small.release()
+
+            val rgba = Mat()
+            Imgproc.cvtColor(out, rgba, Imgproc.COLOR_RGB2RGBA)
+            out.release()
+            val bitmap = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888)
+            Utils.matToBitmap(rgba, bitmap)
+            rgba.release()
+            bitmap
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
     /** فقط برش و اصلاح پرسپکتیو (بدون بهبود). */
     fun warp(src: Bitmap, quad: Quad?, maxSide: Int = 2200): Bitmap? {
         if (!isReady()) return null
