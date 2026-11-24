@@ -39,6 +39,16 @@ object DocumentScanEngine {
 
     /** تشخیص قاب سند از روی رنگ مرکز و رشد به سمت لبه‌ها. */
     fun detect(src: Bitmap, workMax: Int = 560): Detection {
+        // مسیر اصلی: لبه‌یابی Canny + تبدیل هاف (مثل اسکنرهای حرفه‌ای)
+        try {
+            val edges = ir.scanfa.app.image.EdgeDetector.canny(src, 640)
+            val hough = ir.scanfa.app.image.HoughQuad.findQuad(edges, src.width, src.height)
+            if (hough != null) {
+                return Detection(hough, 0.95f, Color.WHITE)
+            }
+        } catch (t: Throwable) {
+            // به روش رنگ‌محور برمی‌گردیم
+        }
         return try {
             val scale = workMax.toFloat() / max(src.width, src.height)
             val w = max(48, (src.width * scale).toInt())
