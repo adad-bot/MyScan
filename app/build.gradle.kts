@@ -13,6 +13,8 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -66,7 +68,10 @@ dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation("org.opencv:opencv:4.9.0")
 
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
