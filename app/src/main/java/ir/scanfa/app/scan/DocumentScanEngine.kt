@@ -49,7 +49,19 @@ object DocumentScanEngine {
             if (small !== src) small.recycle()
 
             val center = centerColor(px, w, h)
-            val mask = growFromCenter(px, w, h, center)
+            val mask = BooleanArray(w * h)
+            val seeds = listOf(
+                (h / 2) * w + (w / 2),
+                (h / 2 - h / 12) * w + (w / 2 - w / 12),
+                (h / 2 + h / 12) * w + (w / 2 + w / 12),
+                (h / 2 - h / 12) * w + (w / 2 + w / 12),
+                (h / 2 + h / 12) * w + (w / 2 - w / 12)
+            )
+            for (seed in seeds) {
+                if (seed !in mask.indices) continue
+                val m = growFrom(px, w, h, center, seed)
+                for (i in mask.indices) if (m[i]) mask[i] = true
+            }
             val filled = closeMask(mask, w, h)
 
             val quad = quadFromMask(filled, w, h, src.width, src.height)
@@ -126,7 +138,7 @@ object DocumentScanEngine {
     }
 
     /** رشد ناحیه از مرکز: پیکسل‌های سازگار با رنگ مرکز جزو سند می‌شوند. */
-    private fun growFromCenter(px: IntArray, w: Int, h: Int, center: Int): BooleanArray {
+    private fun growFrom(px: IntArray, w: Int, h: Int, center: Int, startSeed: Int): BooleanArray {
         val cr = (center shr 16) and 0xFF
         val cg = (center shr 8) and 0xFF
         val cb = center and 0xFF
@@ -136,7 +148,7 @@ object DocumentScanEngine {
         var head = 0
         var tail = 0
 
-        val start = (h / 2) * w + (w / 2)
+        val start = startSeed
         queue[tail++] = start
         visited[start] = true
 
@@ -257,20 +269,51 @@ object DocumentScanEngine {
         val top = fitHorizontal(topPts) ?: return null
         val bottom = fitHorizontal(bottomPts) ?: return null
 
-        val tl = intersect(left, top) ?: return null
-        val tr = intersect(right, top) ?: return null
-        val br = intersect(right, bottom) ?: return null
-        val bl = intersect(left, bottom) ?: return null
+        val tl0 = intersect(left, top) ?: return null
+        val tr0 = intersect(right, top) ?: return null
+        val br0 = intersect(right, bottom) ?: return null
+        val bl0 = intersect(left, bottom) ?: return null
 
         // مقیاس از فضای کاری به تصویر اصلی
         val sx = srcW.toFloat() / w
         val sy = srcH.toFloat() / h
-        return Quad(
-            PointF(tl.x * sx, tl.y * sy),
-            PointF(tr.x * sx, tr.y * sy),
-            PointF(br.x * sx, br.y * sy),
-            PointF(bl.x * sx, bl.y * sy)
-        )
+        val pts = listOf(
+            PointF(tl0.x * sx, tl0.y * sy),
+            PointF(tr0.x * sx, tr0.y * sy),
+            PointF(br0.x * sx, br0.y * sy),
+            PointF(bl0.x * sx, bl0.y * sy)
+        ).map { p ->
+            PointF(
+                p.x.coerceIn(0f, srcW - 1f),
+                p.y.coerceIn(0f, srcH - 1f)
+            )
+        }
+        return orderQuad(pts)
+    }
+
+    /** مرتب‌سازی گوشه‌ها: شروع از بالا-چپ و چرخش در جهت ساعت‌گرد. */
+    private fun orderQuad(points: List<PointF>): Quad? {
+        if (points.size != 4) return null
+        val cx = points.sumOf { it.x.toDouble() }.toFloat() / 4f
+        val cy = points.sumOf { it.y.toDouble() }.toFloat() / 4f
+        val sorted = points.sortedBy { kotlin.math.atan2(it.y - cy, it.x - cx) }
+        var startIndex = 0
+        var best = Float.MAX_VALUE
+        sorted.forEachIndexed { i, p ->
+            val s = p.x + p.y
+            if (s < best) {
+                best = s
+                startIndex = i
+            }
+        }
+        val rotated = List(4) { sorted[(startIndex + it) % 4] }
+        // اطمینان از جهت ساعت‌گرد
+        val area = (rotated[0].x * rotated[1].y - rotated[1].x * rotated[0].y) +
+            (rotated[1].x * rotated[2].y - rotated[2].x * rotated[1].y) +
+            (rotated[2].x * rotated[3].y - rotated[3].x * rotated[2].y) +
+            (rotated[3].x * rotated[0].y - rotated[0].x * rotated[3].y)
+        val ordered = if (area < 0f) listOf(rotated[0], rotated[3], rotated[2], rotated[1]) else rotated
+        return Quad(ordered[0], ordered[1], ordered[2], ordered[3])
     }
 
     private data class Line(val a: Float, val b: Float)

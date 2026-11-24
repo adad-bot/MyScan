@@ -104,7 +104,7 @@ fun DateHeroCard(
 
                     Box(
                         Modifier
-                            .size(126.dp)
+                            .size(110.dp)
                             .background(scheme.surface, CircleShape)
                             .border(2.dp, scheme.primary.copy(alpha = 0.35f), CircleShape),
                         contentAlignment = Alignment.Center
@@ -122,13 +122,13 @@ fun DateHeroCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 Calendars.fa(j.jd),
-                                fontSize = 44.sp,
+                                fontSize = 40.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = scheme.onSurface
                             )
                             Text(
                                 Calendars.fa(j.jy),
-                                fontSize = 14.sp,
+                                fontSize = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = scheme.onSurfaceVariant
                             )

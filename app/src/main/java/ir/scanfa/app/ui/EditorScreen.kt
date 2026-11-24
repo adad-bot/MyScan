@@ -75,6 +75,7 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
     var preview by remember { mutableStateOf<Bitmap?>(null) }
     var corners by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var frameMode by remember { mutableStateOf(false) }
+    var fineFrame by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf(FilterKind.ORIGINAL) }
     var eraserOn by remember { mutableStateOf(false) }
     var strokes by remember { mutableStateOf<List<Float>>(emptyList()) }
@@ -110,7 +111,29 @@ fun EditorScreen(vm: ScannerViewModel, nav: NavHostController, docId: String, pa
         }
     }
 
-    fun cropList(): List<Float> = corners.flatMap { listOf(it.x, it.y) }
+    fun cropList(): List<Float> {
+        val quad = if (corners.size >= 8) fitQuadFromEight(corners) else corners
+        return quad.flatMap { listOf(it.x, it.y) }
+    }
+
+    fun toggleFine() {
+        if (fineFrame) {
+            corners = corners.filterIndexed { index, _ -> index % 2 == 0 }
+            fineFrame = false
+        } else {
+            if (corners.size == 4) {
+                val list = ArrayList<Offset>()
+                for (i in 0..3) {
+                    val a = corners[i]
+                    val b = corners[(i + 1) % 4]
+                    list.add(a)
+                    list.add(Offset((a.x + b.x) / 2f, (a.y + b.y) / 2f))
+                }
+                corners = list
+            }
+            fineFrame = true
+        }
+    }
 
     fun regenerate() {
         val p = page ?: return
@@ -257,7 +280,7 @@ private fun EditorCanvas(
     val latestCorners by rememberUpdatedState(corners)
     var dragIndex by remember { mutableIntStateOf(-1) }
     val threshold = with(LocalDensity.current) { 64.dp.toPx() }
-    val showFrame = corners.size == 4 && !eraser
+    val showFrame = corners.size >= 4 && !eraser
 
     val gesture = if (eraser) {
         Modifier.pointerInput(bitmap) {
@@ -364,4 +387,44 @@ private fun fitRect(bitmap: Bitmap, width: Float, height: Float): Rect {
     val left = (width - w) / 2f
     val top = (height - h) / 2f
     return Rect(left, top, left + w, top + h)
+}
+
+private data class FitLine(val px: Float, val py: Float, val dx: Float, val dy: Float)
+
+private fun fitLine(points: List<Offset>): FitLine {
+    val mx = points.sumOf { it.x.toDouble() }.toFloat() / points.size
+    val my = points.sumOf { it.y.toDouble() }.toFloat() / points.size
+    var cxx = 0f
+    var cyy = 0f
+    var cxy = 0f
+    for (p in points) {
+        val dx = p.x - mx
+        val dy = p.y - my
+        cxx += dx * dx
+        cyy += dy * dy
+        cxy += dx * dy
+    }
+    val angle = 0.5f * kotlin.math.atan2(2f * cxy, cxx - cyy)
+    return FitLine(mx, my, kotlin.math.cos(angle), kotlin.math.sin(angle))
+}
+
+private fun intersectLines(a: FitLine, b: FitLine): Offset? {
+    val cross = a.dx * b.dy - a.dy * b.dx
+    if (kotlin.math.abs(cross) < 1e-5f) return null
+    val t = ((b.px - a.px) * b.dy - (b.py - a.py) * b.dx) / cross
+    return Offset(a.px + a.dx * t, a.py + a.dy * t)
+}
+
+private fun fitQuadFromEight(points: List<Offset>): List<Offset> {
+    if (points.size < 8) return points.take(4)
+    val c = listOf(points[0], points[2], points[4], points[6])
+    val m = listOf(points[1], points[3], points[5], points[7])
+    val sides = (0..3).map { i -> fitLine(listOf(c[i], m[i], c[(i + 1) % 4])) }
+    val result = ArrayList<Offset>(4)
+    for (i in 0..3) {
+        val prev = sides[(i + 3) % 4]
+        val current = sides[i]
+        result.add(intersectLines(prev, current) ?: c[i])
+    }
+    return result
 }

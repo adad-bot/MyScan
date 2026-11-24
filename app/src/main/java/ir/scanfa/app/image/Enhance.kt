@@ -73,17 +73,42 @@ object Enhance {
             var g = lut[(c shr 8) and 0xFF]
             var b = lut[c and 0xFF]
             val gray = (r * 299 + g * 587 + b * 114) / 1000
-            val sat = 1.28f
+            val sat = 1.14f
             r = (gray + (r - gray) * sat).roundToInt().coerceIn(0, 255)
             g = (gray + (g - gray) * sat).roundToInt().coerceIn(0, 255)
             b = (gray + (b - gray) * sat).roundToInt().coerceIn(0, 255)
             out[i] = Color.argb(255, r, g, b)
         }
 
-        sharpen(out, w, h, sharpenStrength)
+        // تیزکردن فقط وقتی تصویر نیاز دارد (نرم/تار است)، نه همیشه
+        val energy = edgeEnergy(pixels, w, h)
+        val strength = if (energy < 9f) 0.5f else if (energy < 14f) 0.25f else 0f
+        if (strength > 0f) sharpen(out, w, h, strength)
         val result = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         result.setPixels(out, 0, w, 0, 0, w, h)
         return result
+    }
+
+    private fun edgeEnergy(px: IntArray, w: Int, h: Int): Float {
+        var sum = 0.0
+        var count = 0
+        var y = 1
+        while (y < h - 1) {
+            var x = 1
+            while (x < w - 1) {
+                val c = px[y * w + x]
+                val left = px[y * w + x - 1]
+                val up = px[(y - 1) * w + x]
+                val l = (((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF)) / 3
+                val ll = (((left shr 16) and 0xFF) + ((left shr 8) and 0xFF) + (left and 0xFF)) / 3
+                val lu = (((up shr 16) and 0xFF) + ((up shr 8) and 0xFF) + (up and 0xFF)) / 3
+                sum += kotlin.math.abs(l - ll) + kotlin.math.abs(l - lu)
+                count++
+                x += 3
+            }
+            y += 3
+        }
+        return if (count == 0) 0f else (sum / count).toFloat()
     }
 
     private fun sharpen(px: IntArray, w: Int, h: Int, strength: Float) {

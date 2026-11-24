@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -40,7 +41,7 @@ fun AppHeader(
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().offset(y = (-18).dp).padding(horizontal = 14.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
