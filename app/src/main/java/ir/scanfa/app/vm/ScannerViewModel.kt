@@ -291,7 +291,7 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
         val bmp = Img.decode(target, 2400)
         var confidence = 0f
         val crop = if (prefs.autoDetect && bmp != null) {
-            val result = SmartScan.detect(bmp)
+            val result = ir.scanfa.app.scan.DocumentScanEngine.detect(bmp)
             confidence = result.confidence
             result.quad?.toNormalized(bmp.width, bmp.height)
         } else {
@@ -341,16 +341,13 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 DocDetector.detect(src)
             }
-            var bmp = Warp.warp(src, quad, maxDim)
+            var bmp = ir.scanfa.app.scan.DocumentScanEngine.crop(src, quad, maxDim)
             if (bmp !== src) src.recycle()
-            val trimmed = SmartScan.trimEdges(bmp)
-            if (trimmed !== bmp) bmp.recycle()
-            bmp = trimmed
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
             bmp = filtered
             if (filter == FilterKind.ENHANCE) {
-                val improved = Enhance.improve(bmp)
+                val improved = ir.scanfa.app.scan.DocumentScanEngine.enhance(bmp)
                 if (improved !== bmp) bmp.recycle()
                 bmp = improved
             }
@@ -383,16 +380,13 @@ class ScannerViewModel(app: Application) : AndroidViewModel(app) {
                 DocDetector.detect(src)
             }
             val normalized = crop ?: quad.toNormalized(src.width, src.height)
-            var bmp = Warp.warp(src, quad, 2200)
+            var bmp = ir.scanfa.app.scan.DocumentScanEngine.crop(src, quad, 2200)
             if (bmp !== src) src.recycle()
-            val trimmed = SmartScan.trimEdges(bmp)
-            if (trimmed !== bmp) bmp.recycle()
-            bmp = trimmed
             val filtered = Filters.apply(bmp, filter)
             if (filtered !== bmp) bmp.recycle()
             bmp = filtered
             if (filter == FilterKind.ENHANCE) {
-                val improved = Enhance.improve(bmp)
+                val improved = ir.scanfa.app.scan.DocumentScanEngine.enhance(bmp)
                 if (improved !== bmp) bmp.recycle()
                 bmp = improved
             }

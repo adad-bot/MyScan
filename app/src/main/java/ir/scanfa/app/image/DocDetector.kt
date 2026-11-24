@@ -9,7 +9,8 @@ import android.graphics.Bitmap
 object DocDetector {
 
     fun detect(src: Bitmap): Quad =
-        SmartScan.detectQuad(src) ?: Quad.inset(src.width, src.height, 0.04f)
+        ir.scanfa.app.scan.DocumentScanEngine.detect(src).quad
+            ?: Quad.inset(src.width, src.height, 0.04f)
 
-    fun confidence(src: Bitmap): Float = SmartScan.detect(src).confidence
+    fun confidence(src: Bitmap): Float = ir.scanfa.app.scan.DocumentScanEngine.detect(src).confidence
 }
