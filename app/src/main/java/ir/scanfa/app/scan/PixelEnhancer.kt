@@ -139,6 +139,16 @@ object PixelEnhancer {
             tensor.close()
             result.close()
 
+            // کالیبراسیون تُن مطابق مرجع اسکنر: آلفا=۰٫۸ و گاما=۰٫۸۵
+            val gamma = 0.85
+            val lut = IntArray(256) { i ->
+                (255.0 * Math.pow(i / 255.0, gamma)).toInt().coerceIn(0, 255)
+            }
+            val alpha = 0.8f
+            for (i in 0 until n * 3) {
+                gainFloats[i] = 1f + alpha * (gainFloats[i] - 1f)
+            }
+
             val fullPx = IntArray(fw * fh)
             src.getPixels(fullPx, 0, fw, 0, 0, fw, fh)
             val out = IntArray(fullPx.size)
@@ -148,9 +158,9 @@ object PixelEnhancer {
                     val sx = (x.toFloat() / fw * sw).toInt().coerceIn(0, sw - 1)
                     val si = sy * sw + sx
                     val c = fullPx[y * fw + x]
-                    val r = (((c shr 16) and 0xFF) * gainFloats[si * 3]).roundToInt().coerceIn(0, 255)
-                    val g = (((c shr 8) and 0xFF) * gainFloats[si * 3 + 1]).roundToInt().coerceIn(0, 255)
-                    val b = ((c and 0xFF) * gainFloats[si * 3 + 2]).roundToInt().coerceIn(0, 255)
+                    val r = lut[(((c shr 16) and 0xFF) * gainFloats[si * 3]).roundToInt().coerceIn(0, 255)]
+                    val g = lut[(((c shr 8) and 0xFF) * gainFloats[si * 3 + 1]).roundToInt().coerceIn(0, 255)]
+                    val b = lut[((c and 0xFF) * gainFloats[si * 3 + 2]).roundToInt().coerceIn(0, 255)]
                     out[y * fw + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
                 }
             }

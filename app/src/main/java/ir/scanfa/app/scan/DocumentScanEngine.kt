@@ -98,34 +98,43 @@ object DocumentScanEngine {
     }
 
     fun enhance(src: Bitmap, config: Config = Config()): Bitmap {
-        // شبکهٔ کوچک بهبود (PixelNet) اگر مدل و Context موجود باشد
-        try {
-            val ctx = ir.scanfa.app.AppContext.ctx
-            if (ctx != null) {
-                val nn = ir.scanfa.app.scan.PixelEnhancer.enhance(ctx, src)
-                if (nn != null) return nn
-            }
-        } catch (t: Throwable) {
-            // ادامه با روش‌های دیگر
-        }
+        // ۱) بهبود کلاسیک (حذف سایه، CLAHE، تیزکردن)
+        var base = src
         try {
             if (OpenCvScanner.isReady()) {
                 val cv = OpenCvScanner.enhanceOnly(src)
-                if (cv != null) return cv
+                if (cv != null) base = cv
             }
         } catch (t: Throwable) {
-            // ادامه با روش داخلی
+            // ادامه
         }
-        var bmp = src
-        if (config.flattenLighting) {
-            val flat = flattenLighting(bmp)
-            if (flat !== bmp) bmp.recycle()
-            bmp = flat
+        if (base === src) {
+            try {
+                if (config.flattenLighting) {
+                    val flat = flattenLighting(src)
+                    if (flat !== src) base = flat
+                }
+                val enhanced = Enhance.improve(base, if (config.sharpen) 0.6f else 0f)
+                if (enhanced !== base) base = enhanced
+            } catch (t: Throwable) {
+                // ادامه
+            }
         }
-        val enhanced = Enhance.improve(bmp, if (config.sharpen) 0.6f else 0f)
-        if (enhanced !== bmp) bmp.recycle()
-        bmp = enhanced
-        return bmp
+
+        // ۲) شبکهٔ کوچک PixelNet برای کالیبراسیون نهایی تُن و رنگ
+        try {
+            val ctx = ir.scanfa.app.AppContext.ctx
+            if (ctx != null) {
+                val nn = PixelEnhancer.enhance(ctx, base)
+                if (nn != null) {
+                    if (base !== src) base.recycle()
+                    return nn
+                }
+            }
+        } catch (t: Throwable) {
+            // ادامه
+        }
+        return base
     }
 
     fun scan(src: Bitmap, config: Config = Config()): Bitmap {

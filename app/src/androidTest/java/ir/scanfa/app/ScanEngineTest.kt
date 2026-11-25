@@ -84,6 +84,24 @@ class ScanEngineTest {
     }
 
     @Test
+    fun defaultPipeline() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val quad = DocumentScanEngine.detect(src).quad
+        val cropped = DocumentScanEngine.crop(src, quad, 1600)
+        val enhanced = DocumentScanEngine.enhance(cropped)
+        save(enhanced, File(outDir, "three_default.png"))
+        enhanced.recycle()
+        if (cropped !== src) cropped.recycle()
+        src.recycle()
+    }
+
+    @Test
     fun dewarpSample() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
