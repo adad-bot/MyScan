@@ -84,6 +84,25 @@ class ScanEngineTest {
     }
 
     @Test
+    fun aiNoFlow() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val uv = ir.scanfa.app.scan.UvDocDewarper.dewarp(context, src) ?: src
+        val cropped = ir.scanfa.app.scan.OpenCvScanner.cropToPaper(uv) ?: uv
+        val enhanced = DocumentScanEngine.enhance(cropped)
+        save(enhanced, File(outDir, "three_ai_noflow.png"))
+        enhanced.recycle()
+        if (cropped !== uv) cropped.recycle()
+        if (uv !== src) uv.recycle()
+        src.recycle()
+    }
+
+    @Test
     fun aiPipeline() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -101,6 +120,28 @@ class ScanEngineTest {
         if (cropped !== flow) cropped.recycle()
         if (flow !== uv) flow.recycle()
         if (uv !== src) uv.recycle()
+        src.recycle()
+    }
+
+    @Test
+    fun defaultFlowSweep() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val quad = DocumentScanEngine.detect(src).quad
+        val cropped = DocumentScanEngine.crop(src, quad, 1600)
+        for (k in listOf(0.15f, 0.25f, 0.35f)) {
+            val flowed = ir.scanfa.app.scan.FlowDewarper.dewarp(context, cropped, k) ?: cropped
+            val enhanced = DocumentScanEngine.enhance(flowed)
+            save(enhanced, File(outDir, "three_k" + k + ".png"))
+            enhanced.recycle()
+            if (flowed !== cropped) flowed.recycle()
+        }
+        cropped.recycle()
         src.recycle()
     }
 
