@@ -116,8 +116,12 @@ fun ImportScreen(vm: ScannerViewModel, nav: NavHostController) {
             }
             vm.postMessage("در حال صاف‌کردن با هوش مصنوعی…")
             val dewarped = withContext(Dispatchers.IO) { UvDocDewarper.dewarp(context, decoded) }
+            val refined = withContext(Dispatchers.IO) {
+                val base = dewarped ?: return@withContext null
+                ir.scanfa.app.scan.FlowDewarper.dewarp(context, base, 0.3f)
+            }
             val processed = withContext(Dispatchers.IO) {
-                val source = dewarped ?: decoded
+                val source = refined ?: dewarped ?: decoded
                 val cropped = ir.scanfa.app.scan.OpenCvScanner.cropToPaper(source)
                 val ready = cropped ?: source
                 if (cropped != null && cropped !== source) source.recycle()

@@ -84,6 +84,47 @@ class ScanEngineTest {
     }
 
     @Test
+    fun aiPipeline() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val uv = ir.scanfa.app.scan.UvDocDewarper.dewarp(context, src) ?: src
+        val flow = ir.scanfa.app.scan.FlowDewarper.dewarp(context, uv, 0.3f) ?: uv
+        val cropped = ir.scanfa.app.scan.OpenCvScanner.cropToPaper(flow) ?: flow
+        val enhanced = DocumentScanEngine.enhance(cropped)
+        save(enhanced, File(outDir, "three_ai.png"))
+        enhanced.recycle()
+        if (cropped !== flow) cropped.recycle()
+        if (flow !== uv) flow.recycle()
+        if (uv !== src) uv.recycle()
+        src.recycle()
+    }
+
+    @Test
+    fun defaultFlow() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
+        val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
+        val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+        val quad = DocumentScanEngine.detect(src).quad
+        val cropped = DocumentScanEngine.crop(src, quad, 1600)
+        val flowed = ir.scanfa.app.scan.FlowDewarper.dewarp(context, cropped, 0.3f) ?: cropped
+        val enhanced = DocumentScanEngine.enhance(flowed)
+        save(enhanced, File(outDir, "three_default_flow.png"))
+        enhanced.recycle()
+        if (flowed !== cropped) flowed.recycle()
+        cropped.recycle()
+        src.recycle()
+    }
+
+    @Test
     fun defaultPipeline() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
