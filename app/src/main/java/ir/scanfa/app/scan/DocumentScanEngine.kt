@@ -98,6 +98,16 @@ object DocumentScanEngine {
     }
 
     fun enhance(src: Bitmap, config: Config = Config()): Bitmap {
+        // شبکهٔ کوچک بهبود (PixelNet) اگر مدل و Context موجود باشد
+        try {
+            val ctx = ir.scanfa.app.AppContext.ctx
+            if (ctx != null) {
+                val nn = ir.scanfa.app.scan.PixelEnhancer.enhance(ctx, src)
+                if (nn != null) return nn
+            }
+        } catch (t: Throwable) {
+            // ادامه با روش‌های دیگر
+        }
         try {
             if (OpenCvScanner.isReady()) {
                 val cv = OpenCvScanner.enhanceOnly(src)

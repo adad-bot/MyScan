@@ -23,6 +23,7 @@ class ScanEngineTest {
     fun processSamples() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
         val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
 
         val names = listOf("one.png", "two.png", "three.jpg")
@@ -86,6 +87,7 @@ class ScanEngineTest {
     fun dewarpSample() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        ir.scanfa.app.AppContext.ctx = context
         val outDir = File(context.getExternalFilesDir(null), "scan_test").apply { mkdirs() }
         val src = instrumentation.context.assets.open("scan_test/three.jpg").use { stream ->
             BitmapFactory.decodeStream(stream)

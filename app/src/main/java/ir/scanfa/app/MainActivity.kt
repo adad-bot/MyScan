@@ -1,4 +1,4 @@
-package ir.scanfa.app
+﻿package ir.scanfa.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -26,6 +26,7 @@ import ir.scanfa.app.vm.ScannerViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContext.ctx = applicationContext
         enableEdgeToEdge()
         setContent {
             val vm: ScannerViewModel = viewModel()
